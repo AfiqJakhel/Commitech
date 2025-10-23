@@ -94,7 +94,6 @@ fun SimpleOutlinedButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val isHovered by interactionSource.collectIsHoveredAsState()
 
-    // Saat ditekan/hover sedikit ubah warna agar terasa responsif
     val currentBorderColor = when {
         isPressed -> borderColor.copy(alpha = 0.8f)
         isHovered -> borderColor.copy(alpha = 0.9f)
