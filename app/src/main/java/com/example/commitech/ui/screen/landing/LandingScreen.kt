@@ -1,29 +1,28 @@
 package com.example.commitech.ui.screen.landing
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
 
+// ===========================================================
+// 🌈 Halaman Landing
+// ===========================================================
 @Composable
 fun LandingScreen(
     onLoginClick: () -> Unit,
@@ -39,16 +38,19 @@ fun LandingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Gambar utama landing page
             Image(
-                painter = painterResource(id = R.drawable.LandingPage),
+                painter = painterResource(id = R.drawable.landingpage),
                 contentDescription = "Landing Illustration",
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .height(250.dp)
+                    .fillMaxWidth()
+                    .height(500.dp)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Judul
             Text(
                 text = "COMMITECH",
                 fontSize = 26.sp,
@@ -57,28 +59,61 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            Button(
-                onClick = onLoginClick,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text("LOGIN")
-            }
+            // Tombol Login (Outlined)
+            SimpleOutlinedButton(
+                text = "LOGIN",
+                borderColor = MaterialTheme.colorScheme.primary,
+                textColor = MaterialTheme.colorScheme.primary,
+                onClick = onLoginClick
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedButton(
-                onClick = onRegisterClick,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(48.dp)
-            ) {
-                Text("REGISTER")
-            }
+            // Tombol Register (Outlined)
+            SimpleOutlinedButton(
+                text = "REGISTER",
+                borderColor = MaterialTheme.colorScheme.primary,
+                textColor = MaterialTheme.colorScheme.primary,
+                onClick = onRegisterClick
+            )
         }
+    }
+}
+
+// ===========================================================
+// 🔘 Reusable Outlined Button (tanpa animasi warna)
+// ===========================================================
+@Composable
+fun SimpleOutlinedButton(
+    text: String,
+    borderColor: Color,
+    textColor: Color,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    // Saat ditekan/hover sedikit ubah warna agar terasa responsif
+    val currentBorderColor = when {
+        isPressed -> borderColor.copy(alpha = 0.8f)
+        isHovered -> borderColor.copy(alpha = 0.9f)
+        else -> borderColor
+    }
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth(0.6f)
+            .height(48.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = textColor
+        ),
+        border = BorderStroke(1.dp, SolidColor(currentBorderColor)),
+        interactionSource = interactionSource
+    ) {
+        Text(text = text, fontWeight = FontWeight.Medium)
     }
 }
