@@ -1,4 +1,4 @@
-package com.example.commitech.ui.screen.landing
+package com.example.commitech.ui.screen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
