@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.commitech.ui.screen.LandingScreen
 import com.example.commitech.ui.screen.LoginScreen
 import com.example.commitech.ui.screen.SplashScreen
+import com.example.commitech.ui.screen.SignUpScreen
 
 @Composable
 fun AppNavGraph() {
@@ -30,7 +31,7 @@ fun AppNavGraph() {
         composable(Screen.Landing.route) {
             LandingScreen(
                 onLoginClick = { navController.navigate(Screen.Login.route) },
-                onRegisterClick = { navController.navigate(Screen.Register.route) }
+                onSignUpClick = { navController.navigate(Screen.SignUp.route) }
             )
         }
 
@@ -40,13 +41,17 @@ fun AppNavGraph() {
                 onBackClick = { navController.popBackStack() },
                 onLoginClick = { /* TODO: aksi login */ },
                 onForgotPassword = { /* TODO */ },
-                onSignUpClick = { navController.navigate(Screen.Register.route) }
+                onSignUpClick = { navController.navigate(Screen.SignUp.route) }
             )
         }
 
-        // 📝 Halaman Register (nanti kamu isi)
-        composable(Screen.Register.route) {
-            // TODO: RegisterScreen()
+        // 📝 Halaman SignUp (nanti kamu isi)
+        composable(Screen.SignUp.route) {
+            SignUpScreen(
+                onBackClick = { navController.popBackStack() },
+                onLoginClick = { navController.navigate(Screen.Login.route) },
+                onSignUpClick = { /* TODO: aksi login */ },
+            )
         }
     }
 }

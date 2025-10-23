@@ -26,7 +26,7 @@ import com.example.commitech.R
 @Composable
 fun LandingScreen(
     onLoginClick: () -> Unit,
-    onRegisterClick: () -> Unit
+    onSignUpClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -69,12 +69,12 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tombol Register (Outlined)
+            // Tombol SignUp (Outlined)
             SimpleOutlinedButton(
-                text = "REGISTER",
+                text = "SIGN UP",
                 borderColor = MaterialTheme.colorScheme.primary,
                 textColor = MaterialTheme.colorScheme.primary,
-                onClick = onRegisterClick
+                onClick = onSignUpClick
             )
         }
     }

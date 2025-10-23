@@ -8,6 +8,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
@@ -20,7 +22,8 @@ private val DarkColorScheme = darkColorScheme(
     surface = TealSurfaceDark,                // Permukaan konten
     onSurface = TealOnSurfaceDark,            // Warna teks di permukaan
     secondary = BlueDarkSecondaryContainer,   // Warna sekunder (aksen biru)
-    onSecondary = BlueDarkOnSecondaryContainer
+    onSecondary = BlueDarkOnSecondaryContainer,
+    primaryContainer = ButtonLoginDarkContainer
 )
 
 
@@ -36,12 +39,23 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TealOnSurface,                // Teks di permukaan
     secondary = BlueSecondary,                // Aksen biru
     onSecondary = BlueOnSecondaryContainer,   // Warna teks di atas biru
+    primaryContainer = ButtonLoginContainer
 )
 
 
 // ==========================
 // 🎨 THEME WRAPPER
 // ==========================
+
+data class Theme(
+    val ButtonLogin : Color
+)
+val LocalTheme = staticCompositionLocalOf {
+    Theme(
+        ButtonLogin = Color.Unspecified
+    )
+}
+
 @Composable
 fun CommitechTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -58,9 +72,24 @@ fun CommitechTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    // Tambahkan custom warna login otomatis sesuai tema
+    val customColors = if (darkTheme) {
+        Theme(
+            ButtonLogin = ButtonLoginDarkContainer
+        )
+    } else {
+        Theme(
+            ButtonLogin = ButtonLoginContainer
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalTheme provides customColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

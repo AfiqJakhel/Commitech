@@ -17,14 +17,14 @@ import androidx.compose.ui.unit.sp
 import com.example.commitech.ui.theme.LocalTheme
 
 @Composable
-fun LoginScreen(
+fun SignUpScreen(
     onBackClick: () -> Unit,
-    onLoginClick: () -> Unit,
-    onForgotPassword: () -> Unit,
-    onSignUpClick: () -> Unit
+    onSignUpClick: () -> Unit,
+    onLoginClick: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -56,8 +56,6 @@ fun LoginScreen(
                     )
                 }
 
-                // Judul di tengah
-
             }
             Box(
                 modifier = Modifier
@@ -65,19 +63,20 @@ fun LoginScreen(
                     .padding(vertical = 32.dp)
             ) {
                 Text(
-                    text = "Sign In",
+                    text = "Sign Up",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onBackground,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // 🧑 Username Field
             Text(
                 text = "Username",
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.ExtraBold,
                 fontSize = 14.sp,
                 color = colorScheme.onBackground,
                 modifier = Modifier
@@ -107,7 +106,7 @@ fun LoginScreen(
             // 🔒 Password Field
             Text(
                 text = "Password",
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.ExtraBold,
                 fontSize = 14.sp,
                 color = colorScheme.onBackground,
                 modifier = Modifier
@@ -133,23 +132,43 @@ fun LoginScreen(
                 )
             )
 
-            // 🔗 Forgot password
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🔒 Confirm Password Field
             Text(
-                text = "Forgot password?",
-                fontSize = 13.sp,
-                color = colorScheme.primary,
+                text = "Confirm Password",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.sp,
+                color = colorScheme.onBackground,
                 modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(top = 8.dp)
-                    .clickable { onForgotPassword() }
+                    .align(Alignment.Start)
+                    .padding(start = 8.dp, bottom = 4.dp)
+            )
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                placeholder = { Text("Confirm your password") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colorScheme.primary,
+                    unfocusedBorderColor = colorScheme.outline,
+                    cursorColor = colorScheme.primary
+                )
             )
 
             Spacer(modifier = Modifier.height(28.dp))
 
             val loginColor = LocalTheme.current.ButtonLogin
-            // 🔘 Tombol Login
+            // 🔘 Tombol Sign Up
             Button(
-                onClick = onLoginClick,
+                onClick = onSignUpClick,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -159,7 +178,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Login",
+                    text = "Sign Up",
                     fontWeight = FontWeight.SemiBold,
                     color = colorScheme.onPrimary
                 )
@@ -167,6 +186,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(36.dp))
 
+            // 🔹 Sign In link (Link ke halaman login di bawah)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -175,12 +195,12 @@ fun LoginScreen(
                 Row(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .clickable { onSignUpClick() }, // Menambahkan clickable pada seluruh row
+                        .clickable { onLoginClick() }, // Menambahkan clickable pada seluruh row
                     horizontalArrangement = Arrangement.Center
                 ) {
                     // "Already have an account?" text dengan warna hitam
                     Text(
-                        text = "Don't have an account?",
+                        text = "Already have an account?",
                         fontWeight = FontWeight.Medium,
                         color = colorScheme.onBackground,  // Warna hitam
                         fontSize = 14.sp,
@@ -192,13 +212,14 @@ fun LoginScreen(
 
                     // "Sign In" dengan warna utama
                     Text(
-                        text = "Sign Up",
+                        text = "Sign In",
                         fontWeight = FontWeight.SemiBold,
                         color = colorScheme.primary, // Warna tema (warna utama)
                         fontSize = 14.sp
                     )
                 }
             }
+
         }
     }
 }
