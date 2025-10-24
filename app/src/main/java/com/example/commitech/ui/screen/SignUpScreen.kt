@@ -194,8 +194,7 @@ fun SignUpScreen(
             ) {
                 Row(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .clickable { onLoginClick() }, // Menambahkan clickable pada seluruh row
+                        .align(Alignment.Center),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     // "Already have an account?" text dengan warna hitam
@@ -212,6 +211,8 @@ fun SignUpScreen(
 
                     // "Sign In" dengan warna utama
                     Text(
+                        modifier = Modifier
+                        .clickable { onLoginClick() }, // Menambahkan clickable pada seluruh Text
                         text = "Sign In",
                         fontWeight = FontWeight.SemiBold,
                         color = colorScheme.primary, // Warna tema (warna utama)

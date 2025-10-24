@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.commitech.ui.screen.HomeScreen
 import com.example.commitech.ui.screen.LandingScreen
 import com.example.commitech.ui.screen.LoginScreen
 import com.example.commitech.ui.screen.SplashScreen
@@ -28,29 +29,52 @@ fun AppNavGraph() {
         }
 
         // 🏠 Halaman Landing
-        composable(Screen.Landing.route) {
+        composable("landing") {
             LandingScreen(
-                onLoginClick = { navController.navigate(Screen.Login.route) },
-                onSignUpClick = { navController.navigate(Screen.SignUp.route) }
+                onLoginClick = { navController.navigate("login") },
+                onSignUpClick = { navController.navigate("register") }
             )
         }
 
         // 🔐 Halaman Login
-        composable(Screen.Login.route) {
+        composable("login") {
             LoginScreen(
-                onBackClick = { navController.popBackStack() },
-                onLoginClick = { /* TODO: aksi login */ },
+                onBackClick = {
+                    // 🔙 Arahkan kembali ke halaman Landing
+                    navController.navigate("landing") {
+                        popUpTo("landing") { inclusive = true }
+                    }
+                },
+                onLoginClick = {
+                    navController.navigate("home") {
+                        popUpTo("landing") { inclusive = true } // supaya tidak bisa kembali ke landing
+                    }
+                },
                 onForgotPassword = { /* TODO */ },
-                onSignUpClick = { navController.navigate(Screen.SignUp.route) }
+                onSignUpClick = { navController.navigate("register") }
             )
         }
 
         // 📝 Halaman SignUp (nanti kamu isi)
-        composable(Screen.SignUp.route) {
+        composable("register") {
             SignUpScreen(
-                onBackClick = { navController.popBackStack() },
-                onLoginClick = { navController.navigate(Screen.Login.route) },
-                onSignUpClick = { /* TODO: aksi login */ },
+                onBackClick = {
+                    navController.navigate("landing") {
+                        popUpTo("landing") { inclusive = true }
+                    }
+                },
+                onLoginClick = {navController.navigate("login") },
+                onSignUpClick = { navController.navigate("login")},
+            )
+        }
+
+        composable("home") {
+            HomeScreen(
+                onDataPendaftarClick = { /* route ke data pendaftar */ },
+                onSeleksiBerkasClick = { /* route ke seleksi berkas */ },
+                onIsiJadwalClick = { /* route ke jadwal */ },
+                onSeleksiWawancaraClick = { /* route ke wawancara */ },
+                onKelulusanClick = { /* route ke kelulusan */ }
             )
         }
     }
