@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Color
 // ==========================
 
 // Warna utama (Teal)
-val TealLight = Color(0xFF009688)       // Warna utama terang
+val TealLight = Color(0xFF2B2769)       // Warna utama terang
 val TealDark = Color(0xFF00695C)        // Versi lebih gelap
 val TealOn = Color(0xFFFFFFFF)          // Warna teks di atas teal
 
@@ -21,10 +21,14 @@ val TealSurfaceDark = Color(0xFF2B2930)     // Untuk transisi ke dark mode
 val TealOnSurfaceDark = Color(0xFFE6E1E5)
 
 val ButtonLoginContainer = Color(0xFF0AC5E6)
+val DataPendaftarCard = Color(0xFFF5D266)
+val SeleksiBerkasCard = Color(0xFF66E7F5)
+val JadwalWawancaraCard = Color(0xFF59FF00)
+val SeleksiWawancaraCard = Color(0xFFFD9699)
+val PengumumanCard = Color(0xFFFD84FF)
 
 // Secondary (Biru)
 val BlueSecondary = Color(0xFF0277BD)             // Biru aksen
-val BlueSecondaryContainer = Color(0xFFB3E5FC)    // Biru muda container
 val BlueOnSecondaryContainer = Color(0xFF003C8F)  // Tulisan di atas biru muda
 
 
@@ -38,4 +42,9 @@ val TealDarkOnBackground = Color(0xFFE6E1E5)
 val ButtonLoginDarkContainer= Color(0xFF089BBC)
 val BlueDarkSecondaryContainer = Color(0xFF174872)
 val BlueDarkOnSecondaryContainer = Color(0xFF90CAF9)
+val DataPendaftarBlackCard = Color(0xFFBFA64D)
+val SeleksiBerkasBlackCard = Color(0xFF289EAB)
+val JadwalWawancaraBlackCard = Color(0xFF3DA000)
+val SeleksiWawancaraBlackCard = Color(0xFFB35D60)
+val PengumumanBlackCard = Color(0xFFB35BB8)
 

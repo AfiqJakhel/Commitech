@@ -1,10 +1,7 @@
 package com.example.commitech.ui.screen
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,19 +25,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
-import com.example.commitech.ui.theme.TealLight
 import androidx.compose.foundation.lazy.items
+import com.example.commitech.ui.theme.LocalTheme
 
 
 data class HomeCardData(
@@ -60,6 +55,7 @@ fun HomeScreen(
     onKelulusanClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val themeCard = LocalTheme.current
 
     Scaffold(
         bottomBar = { HomeBottomBar() },
@@ -94,7 +90,7 @@ fun HomeScreen(
                         Text(
                             text = "Pengguna",
                             fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.ExtraBold,
                             color = colorScheme.onBackground
                         )
                     }
@@ -126,9 +122,9 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "35",
-                        fontSize = 48.sp,
+                        fontSize = 64.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TealLight
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Text(
@@ -149,35 +145,35 @@ fun HomeScreen(
                 HomeCardData(
                     "Data Pendaftar",
                     "lihat data pendaftar yang sudah masuk.",
-                    Color(0xFFFFE18E),
+                    themeCard.DataPendaftar,
                     R.drawable.datapendaftar,
                     onDataPendaftarClick
                 ),
                 HomeCardData(
                     "Seleksi Berkas",
                     "lihat total pendaftar yang sudah masuk ke seleksi berkas.",
-                    Color(0xFFB8E9F9),
+                    themeCard.SeleksiBerkas,
                     R.drawable.landingpage,
                     onSeleksiBerkasClick
                 ),
                 HomeCardData(
                     "Isi Jadwal Wawancara",
                     "Tempat panitia mengintegrasikan jadwal yang lulus wawancara.",
-                    Color(0xFFB6F9A8),
+                    themeCard.JadwalWawancara,
                     R.drawable.jadwalwawancara,
                     onIsiJadwalClick
                 ),
                 HomeCardData(
                     "Seleksi Wawancara",
                     "lihat peserta yang lulus wawancara.",
-                    Color(0xFFFFC6C6),
+                    themeCard.SeleksiWawancara,
                     R.drawable.wawancara,
                     onSeleksiWawancaraClick
                 ),
                 HomeCardData(
                     "Pengumuman Kelulusan",
                     "Selamat untuk para peserta yang lulus acara ini.",
-                    Color(0xFFF9B4F3),
+                    themeCard.PengumumanKelulusan,
                     R.drawable.pengumumanlulus,
                     onKelulusanClick
                 )
@@ -203,59 +199,70 @@ fun HomeCard(
     imageRes: Int,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val colorScheme = MaterialTheme.colorScheme
+    val gradientBrush = androidx.compose.ui.graphics.Brush.linearGradient(
+        colors = listOf(
+            backgroundColor,                // warna utama
+            Color.White.copy(alpha = 0.5f)  // putih lembut di sisi kanan
+        ),
+        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+        end = androidx.compose.ui.geometry.Offset(1050f, 0f) // kiri → kanan
+    )
 
-    Row(
+    androidx.compose.material3.Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 10.dp)
-            .shadow(6.dp, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .background(backgroundColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = onClick
-            )
-            .padding(20.dp), // 🔹 lebih besar sedikit dari sebelumnya
-        verticalAlignment = Alignment.CenterVertically
+            .height(150.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .padding(end = 12.dp)
+                .background(brush = gradientBrush) // 🌈 gradasi kiri ke kanan
+                .fillMaxSize()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF2B2B2B),
-                fontSize = 18.sp // 🔹 lebih besar dari 16.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = description,
-                color = Color(0xFF3A3A3A),
-                fontSize = 14.sp // 🔹 sedikit lebih besar agar proporsional
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface,
+                    fontSize = 18.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = description,
+                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                    fontSize = 14.sp
+                )
+            }
+
+            // 📸 Gambar di sisi kanan
+            Image(
+                painter = painterResource(id = imageRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(140.dp)
+                    .clip(RoundedCornerShape(14.dp))
             )
         }
-
-        // 🔹 Gambar lebih besar (dari 80.dp → 100.dp)
-        Image(
-            painter = painterResource(id = imageRes),
-            contentDescription = null,
-            modifier = Modifier
-                .size(150.dp)
-                .clip(RoundedCornerShape(12.dp))
-        )
     }
 }
 
 
 @Composable
 fun HomeBottomBar() {
+    val colorScheme = MaterialTheme.colorScheme
+
     NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 4.dp
+        containerColor = colorScheme.background, // 🎨 mengikuti warna latar tema
     ) {
         NavigationBarItem(
             selected = true,
@@ -263,10 +270,11 @@ fun HomeBottomBar() {
             icon = {
                 Icon(
                     imageVector = Icons.Default.Home,
-                    contentDescription = "Home"
+                    contentDescription = "Home",
+                    tint = colorScheme.onBackground // ikon adaptif
                 )
             },
-            label = { Text("Home") }
+            label = { Text("Home", color = colorScheme.onBackground) }
         )
 
         NavigationBarItem(
@@ -275,10 +283,11 @@ fun HomeBottomBar() {
             icon = {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "Profile"
+                    contentDescription = "Profile",
+                    tint = colorScheme.onBackground
                 )
             },
-            label = { Text("Profile") }
+            label = { Text("Profile", color = colorScheme.onBackground) }
         )
     }
 }

@@ -48,11 +48,21 @@ private val LightColorScheme = lightColorScheme(
 // ==========================
 
 data class Theme(
-    val ButtonLogin : Color
+    val ButtonLogin : Color,
+    val DataPendaftar: Color,
+    val SeleksiBerkas: Color,
+    val JadwalWawancara: Color,
+    val SeleksiWawancara: Color,
+    val PengumumanKelulusan: Color
 )
 val LocalTheme = staticCompositionLocalOf {
     Theme(
-        ButtonLogin = Color.Unspecified
+        ButtonLogin = Color.Unspecified,
+        DataPendaftar = Color.Unspecified,
+        SeleksiBerkas = Color.Unspecified,
+        JadwalWawancara = Color.Unspecified,
+        SeleksiWawancara = Color.Unspecified,
+        PengumumanKelulusan = Color.Unspecified
     )
 }
 
@@ -60,7 +70,7 @@ val LocalTheme = staticCompositionLocalOf {
 fun CommitechTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color hanya untuk Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -75,11 +85,21 @@ fun CommitechTheme(
     // Tambahkan custom warna login otomatis sesuai tema
     val customColors = if (darkTheme) {
         Theme(
-            ButtonLogin = ButtonLoginDarkContainer
+            ButtonLogin = ButtonLoginDarkContainer,
+            DataPendaftar = DataPendaftarBlackCard,
+            SeleksiBerkas = SeleksiBerkasBlackCard,
+            JadwalWawancara = JadwalWawancaraBlackCard,
+            SeleksiWawancara = SeleksiWawancaraBlackCard,
+            PengumumanKelulusan = PengumumanBlackCard
         )
     } else {
         Theme(
-            ButtonLogin = ButtonLoginContainer
+            ButtonLogin = ButtonLoginContainer,
+            DataPendaftar = DataPendaftarCard,
+            SeleksiBerkas = SeleksiBerkasCard,
+            JadwalWawancara = JadwalWawancaraCard,
+            SeleksiWawancara = SeleksiWawancaraCard,
+            PengumumanKelulusan = PengumumanCard
         )
     }
 
