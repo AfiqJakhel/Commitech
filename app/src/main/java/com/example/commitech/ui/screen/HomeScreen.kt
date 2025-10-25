@@ -53,6 +53,7 @@ fun HomeScreen(
     onIsiJadwalClick: () -> Unit,
     onSeleksiWawancaraClick: () -> Unit,
     onKelulusanClick: () -> Unit
+    
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current

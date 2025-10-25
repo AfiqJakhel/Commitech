@@ -9,10 +9,12 @@ import com.example.commitech.ui.screen.DataPendaftarScreen
 import com.example.commitech.ui.screen.HomeScreen
 import com.example.commitech.ui.screen.LandingScreen
 import com.example.commitech.ui.screen.LoginScreen
+import com.example.commitech.ui.screen.SeleksiBerkasScreen
 import com.example.commitech.ui.screen.SeleksiWawancaraScreen
 import com.example.commitech.ui.screen.SplashScreen
 import com.example.commitech.ui.screen.SignUpScreen
 import com.example.commitech.ui.viewmodel.DataPendaftarViewModel
+import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 
 @Composable
@@ -77,7 +79,7 @@ fun AppNavGraph() {
             HomeScreen(
                 onDataPendaftarClick = {navController.navigate("dataPendaftar")
                 },
-                onSeleksiBerkasClick = { /* route ke seleksi berkas */ },
+                onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
                 onIsiJadwalClick = { /* route ke jadwal */ },
                 onSeleksiWawancaraClick = {
                     navController.navigate("seleksiWawancara")
@@ -101,5 +103,14 @@ fun AppNavGraph() {
                 onBackClick = { navController.popBackStack() }
             )
         }
+
+            composable("seleksiBerkas") {
+                val viewModel: SeleksiBerkasViewModel = viewModel()
+                SeleksiBerkasScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+        }
     }
-}
