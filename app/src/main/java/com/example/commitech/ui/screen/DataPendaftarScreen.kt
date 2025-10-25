@@ -300,24 +300,24 @@ fun DetailPendaftarDialog(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Detail Informasi
-                DetailRow(
+                DetailRowPendaftar(
                     label = "Pilihan Divisi 1",
                     value = "Konsumsi"
                 )
 
-                DetailRow(
+                DetailRowPendaftar(
                     label = "Alasan Memilih Divisi 1",
                     value = "ingin menjadi bagian\ndari divisi konsumsi"
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                DetailRow(
+                DetailRowPendaftar(
                     label = "Pilihan Divisi 2",
                     value = "Acara"
                 )
 
-                DetailRow(
+                DetailRowPendaftar(
                     label = "Alasan Memilih Divisi 1",
                     value = "ingin menjadi bagian\ndari divisi Acara"
                 )
@@ -334,7 +334,7 @@ fun DetailPendaftarDialog(
 }
 
 @Composable
-fun DetailRow(
+fun DetailRowPendaftar(
     label: String,
     value: String
 ) {
