@@ -24,11 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import androidx.compose.foundation.clickable
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.animation.AnimatedContent
-
-
+import androidx.compose.ui.window.Dialog
 
 @Composable
 fun SeleksiBerkasScreen(
@@ -38,7 +34,7 @@ fun SeleksiBerkasScreen(
     val pesertaList by viewModel.pesertaList.collectAsState()
     val isDark = isSystemInDarkTheme()
 
-    // 🎨 Tema warna berdasarkan mode
+    // 🎨 Warna berdasarkan tema
     val backgroundColor = if (isDark) Color(0xFF121212) else Color(0xFFEAFBE9)
     val cardColor = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
@@ -80,19 +76,17 @@ fun SeleksiBerkasScreen(
         containerColor = backgroundColor
     ) { innerPadding ->
 
-        // 🔹 Pakai Box agar tombol selalu “di atas” konten scroll
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(backgroundColor)
                 .padding(innerPadding)
         ) {
-            // 🔹 LazyColumn (scrollable content)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(bottom = 120.dp) // ruang untuk tombol
+                contentPadding = PaddingValues(bottom = 120.dp)
             ) {
                 itemsIndexed(pesertaList) { index, peserta ->
                     PesertaCard(
@@ -104,7 +98,6 @@ fun SeleksiBerkasScreen(
                 }
             }
 
-            // 🔹 Tombol di bawah, selalu terlihat
             Button(
                 onClick = { /* TODO: Export CSV */ },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
@@ -113,7 +106,7 @@ fun SeleksiBerkasScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .navigationBarsPadding() // biar gak ketiban nav bar
+                    .navigationBarsPadding()
             ) {
                 Text(
                     text = "Export to .csv",
@@ -136,8 +129,6 @@ fun PesertaCard(
     var showInfoDialog by remember { mutableStateOf(false) }
     var showAcceptDialog by remember { mutableStateOf(false) }
     var showRejectDialog by remember { mutableStateOf(false) }
-
-    // Status: null = belum diproses, true = diterima, false = ditolak
     var status by remember { mutableStateOf<Boolean?>(null) }
 
     Card(
@@ -155,7 +146,6 @@ fun PesertaCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Nama peserta
             Text(
                 text = "$index. ${peserta.nama}",
                 fontSize = 16.sp,
@@ -163,7 +153,6 @@ fun PesertaCard(
                 modifier = Modifier.weight(1f)
             )
 
-            // === Jika belum diproses, tampilkan ikon Info / Check / Close ===
             if (status == null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -198,7 +187,6 @@ fun PesertaCard(
                     )
                 }
             } else {
-                // === Kalau sudah diproses, ganti ikon dengan hasil ===
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val resultText = if (status == true) "Diterima" else "Ditolak"
                     val resultColor = if (status == true) Color(0xFF2E7D32) else Color(0xFFD32F2F)
@@ -223,104 +211,179 @@ fun PesertaCard(
         }
     }
 
-    // 🔵 Pop-up Info
+    // 🔹 Dialog Pop-up
     if (showInfoDialog) {
         InfoDialog(
             peserta = peserta,
             onDismiss = { showInfoDialog = false }
         )
     }
-
-    // 🟩 Pop-up Terima
     if (showAcceptDialog) {
         AcceptDialog(
             peserta = peserta,
             onDismiss = { showAcceptDialog = false },
-            onConfirm = { reason ->
-                status = true // ubah jadi "Diterima"
+            onConfirm = { _ ->
+                status = true
                 showAcceptDialog = false
             }
         )
     }
-
-    // 🟥 Pop-up Tolak
     if (showRejectDialog) {
         RejectDialog(
             peserta = peserta,
             onDismiss = { showRejectDialog = false },
-            onConfirm = { reason ->
-                status = false // ubah jadi "Ditolak"
+            onConfirm = { _ ->
+                status = false
                 showRejectDialog = false
             }
         )
     }
 }
 
-
-
-
 @Composable
 fun InfoDialog(
     peserta: Peserta,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f)) // efek gelap transparan
-                .padding(20.dp),
+                .background(Color.Black.copy(alpha = 0.6f))
+                .padding(horizontal = 24.dp, vertical = 40.dp),
             contentAlignment = Alignment.Center
         ) {
-            Surface(
+            Card(
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White,
-                tonalElevation = 8.dp,
-                shadowElevation = 10.dp,
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-
-                    // Header nama + close
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    // 🔹 Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.Top
                     ) {
                         Text(
                             text = peserta.nama,
-                            color = Color(0xFF4A3A79),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF1A1A40),
+                            modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = onDismiss) {
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(32.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Tutup",
-                                tint = Color(0xFF4A3A79)
+                                contentDescription = "Close",
+                                tint = Color(0xFF666666)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Detail pilihan divisi dan alasan
-                    DetailRow("Pilihan Divisi 1", "Konsumsi")
-                    DetailRow("Alasan Memilih Divisi 1", "Ingin menjadi bagian dari divisi konsumsi")
-                    DetailRow("Pilihan Divisi 2", "Acara")
-                    DetailRow("Alasan Memilih Divisi 2", "Ingin menjadi bagian dari divisi Acara")
+                    // 🔸 Detail Informasi Horizontal
+                    DetailRowInfo("Pilihan Divisi 1", "Konsumsi")
+                    DetailRowInfo(
+                        "Alasan Memilih Divisi 1",
+                        "Ingin menjadi bagian dari divisi konsumsi"
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    DetailRowInfo("Pilihan Divisi 2", "Acara")
+                    DetailRowInfo(
+                        "Alasan Memilih Divisi 2",
+                        "Ingin menjadi bagian dari divisi acara"
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Checklist dokumen
-                    ChecklistRow("Surat Komitmen", true)
-                    ChecklistRow("CV", true)
-                    ChecklistRow("KRS", true)
+                    // 🔹 Dokumen checklist
+                    Text(
+                        text = "Berkas yang Diupload:",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1A1A40),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    DetailRowCheck("Surat Komitmen")
+                    DetailRowCheck("CV")
+                    DetailRowCheck("KRS")
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DetailRowInfo(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF1A1A40),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color(0xFF1A1A40),
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 16.dp),
+            lineHeight = 18.sp
+        )
+    }
+}
+
+
+@Composable
+fun DetailRowCheck(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color(0xFF1A1A40)
+        )
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = "Checked",
+            tint = Color(0xFF4CAF50),
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
