@@ -48,12 +48,12 @@ data class HomeCardData(
 
 @Composable
 fun HomeScreen(
+    navController: androidx.navigation.NavController, // ✅ tambahkan ini
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
     onIsiJadwalClick: () -> Unit,
     onSeleksiWawancaraClick: () -> Unit,
     onKelulusanClick: () -> Unit
-    
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current

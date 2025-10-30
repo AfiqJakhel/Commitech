@@ -1,30 +1,29 @@
- package com.example.commitech.ui.navigation
+package com.example.commitech.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
-import com.example.commitech.ui.screen.DataPendaftarScreen
-import com.example.commitech.ui.screen.HomeScreen
-import com.example.commitech.ui.screen.LandingScreen
-import com.example.commitech.ui.screen.LoginScreen
-import com.example.commitech.ui.screen.SeleksiBerkasScreen
-import com.example.commitech.ui.screen.SeleksiWawancaraScreen
-import com.example.commitech.ui.screen.SplashScreen
-import com.example.commitech.ui.screen.SignUpScreen
-import com.example.commitech.ui.viewmodel.DataPendaftarViewModel
-import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
-import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
+import androidx.navigation.navArgument
+import com.example.commitech.ui.screen.*
+import com.example.commitech.ui.viewmodel.*
 
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
 
+    // ✅ Shared ViewModel untuk semua halaman jadwal
+    val jadwalViewModel: JadwalViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
+
+        // 🌀 Splash Screen
         composable("splash") {
             SplashScreen(
                 onSplashFinished = {
@@ -35,7 +34,7 @@ fun AppNavGraph() {
             )
         }
 
-        // 🏠 Halaman Landing
+        // 🏠 Landing Screen
         composable("landing") {
             LandingScreen(
                 onLoginClick = { navController.navigate("login") },
@@ -43,59 +42,42 @@ fun AppNavGraph() {
             )
         }
 
-        // 🔐 Halaman Login
+        // 🔐 Login Screen
         composable("login") {
             LoginScreen(
-                onBackClick = {
-                    // 🔙 Arahkan kembali ke halaman Landing
-                    navController.navigate("landing") {
+                onBackClick = { navController.popBackStack() },
+                onLoginClick = {
+                    navController.navigate("home") {
                         popUpTo("landing") { inclusive = true }
                     }
                 },
-                onLoginClick = {
-                    navController.navigate("home") {
-                        popUpTo("landing") { inclusive = true } // supaya tidak bisa kembali ke landing
-                    }
-                },
-                onForgotPassword = { /* TODO */ },
+                onForgotPassword = { },
                 onSignUpClick = { navController.navigate("register") }
             )
         }
 
-        // 📝 Halaman SignUp (nanti kamu isi)
+        // 📝 Register Screen
         composable("register") {
             SignUpScreen(
-                onBackClick = {
-                    navController.navigate("landing") {
-                        popUpTo("landing") { inclusive = true }
-                    }
-                },
-                onLoginClick = {navController.navigate("login") },
-                onSignUpClick = { navController.navigate("login")},
+                onBackClick = { navController.popBackStack() },
+                onLoginClick = { navController.navigate("login") },
+                onSignUpClick = { navController.navigate("login") },
             )
         }
 
+        // 🏡 Home Screen
         composable("home") {
             HomeScreen(
-                onDataPendaftarClick = {navController.navigate("dataPendaftar")
-                },
+                navController = navController,
+                onDataPendaftarClick = { navController.navigate("dataPendaftar") },
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
-                onIsiJadwalClick = { /* route ke jadwal */ },
-                onSeleksiWawancaraClick = {
-                    navController.navigate("seleksiWawancara")
-                },
-                onKelulusanClick = { /* route ke kelulusan */ }
+                onIsiJadwalClick = { navController.navigate("jadwal_graph") },
+                onSeleksiWawancaraClick = { navController.navigate("seleksiWawancara") },
+                onKelulusanClick = { navController.navigate("pengumumanKelulusan") }
             )
         }
 
-        composable("seleksiWawancara") {
-            val viewModel: SeleksiWawancaraViewModel = viewModel()
-            SeleksiWawancaraScreen(
-                viewModel = viewModel,
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
+        // 📄 Data Pendaftar
         composable("dataPendaftar") {
             val viewModel: DataPendaftarViewModel = viewModel()
             DataPendaftarScreen(
@@ -104,13 +86,63 @@ fun AppNavGraph() {
             )
         }
 
-            composable("seleksiBerkas") {
-                val viewModel: SeleksiBerkasViewModel = viewModel()
-                SeleksiBerkasScreen(
-                    viewModel = viewModel,
-                    onBackClick = { navController.popBackStack() }
-                )
+        // 📋 Seleksi Berkas
+        composable("seleksiBerkas") {
+            val viewModel: SeleksiBerkasViewModel = viewModel()
+            SeleksiBerkasScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // 💬 Seleksi Wawancara
+        composable("seleksiWawancara") {
+            val viewModel: SeleksiWawancaraViewModel = viewModel()
+            SeleksiWawancaraScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        // 📢 Pengumuman Kelulusan
+        composable("pengumumanKelulusan") {
+            val viewModel = viewModel<PengumumanViewModel>()
+            PengumumanScreen(navController = navController, viewModel = viewModel)
+        }
+
+        // ✏️ Ubah Detail Peserta
+        composable(
+            route = "ubahDetail/{namaPeserta}",
+            arguments = listOf(navArgument("namaPeserta") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val namaPeserta = backStackEntry.arguments?.getString("namaPeserta") ?: ""
+            val viewModel = viewModel<PengumumanViewModel>()
+            UbahDetailScreen(navController, namaPeserta, viewModel)
+        }
+
+        // 🗓 Jadwal Graph (semua halaman pakai ViewModel yang sama)
+        navigation(
+            startDestination = "jadwalRekrutmen",
+            route = "jadwal_graph"
+        ) {
+            composable("jadwalRekrutmen") {
+                // ✅ gunakan shared instance
+                JadwalRekrutmenScreen(navController, jadwalViewModel)
             }
 
+            composable("tambahJadwal") {
+                // ✅ gunakan shared instance juga
+                TambahJadwalScreen(navController, jadwalViewModel)
+            }
+
+            composable(
+                route = "ubahJadwal/{jadwalId}",
+                arguments = listOf(navArgument("jadwalId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("jadwalId")?.toIntOrNull() ?: 0
+                // ✅ pakai shared ViewModel yang sama
+                UbahJadwalScreen(navController, id, jadwalViewModel)
+            }
         }
     }
+}

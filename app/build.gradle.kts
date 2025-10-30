@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.example.commitech"
-    compileSdk = 36
+    compileSdk = 36 // ✅ perbarui ke 36
 
     defaultConfig {
         applicationId = "com.example.commitech"
-        minSdk = 34
-        targetSdk = 36
+        minSdk = 26
+        targetSdk = 36 // ✅ aman untuk Android baru
         versionCode = 1
         versionName = "1.0"
 
@@ -27,33 +27,42 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
 }
 
 dependencies {
-
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.animation)
-    implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.material3)
+    implementation(libs.androidx.ui)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.material3)
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material3:material3:1.3.1")
+
+    // ✅ LocalDate support di API < 26
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // ✅ Calendar dialog
+    implementation("com.maxkeppeler.sheets-compose-dialogs:core:1.3.0")
+    implementation("com.maxkeppeler.sheets-compose-dialogs:calendar:1.3.0")
+    implementation("com.maxkeppeler.sheets-compose-dialogs:clock:1.3.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -61,7 +70,4 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.material3:material3:1.3.1")
-
 }

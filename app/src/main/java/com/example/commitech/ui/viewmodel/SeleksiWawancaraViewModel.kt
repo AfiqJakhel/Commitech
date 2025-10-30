@@ -3,11 +3,6 @@ package com.example.commitech.ui.viewmodel
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 
-enum class InterviewStatus {
-    PENDING,
-    ACCEPTED,
-    REJECTED
-}
 
 data class ParticipantData(
     val time: String,
@@ -99,4 +94,8 @@ class SeleksiWawancaraViewModel : ViewModel() {
 
         _days[dayIndex] = day.copy(participants = updated)
     }
+
+
+
+
 }
