@@ -2,28 +2,16 @@ package com.example.commitech.ui.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
-import androidx.compose.foundation.lazy.items
 import com.example.commitech.ui.theme.LocalTheme
-
 
 data class HomeCardData(
     val title: String,
@@ -48,7 +34,7 @@ data class HomeCardData(
 
 @Composable
 fun HomeScreen(
-    navController: androidx.navigation.NavController, // ✅ tambahkan ini
+    navController: androidx.navigation.NavController,
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
     onIsiJadwalClick: () -> Unit,
@@ -73,7 +59,7 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 🔹 Header (Hello + Settings sejajar)
+                // 🔹 Header (Hello + Notifications + Settings)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -96,12 +82,29 @@ fun HomeScreen(
                         )
                     }
 
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = colorScheme.onBackground,
-                        modifier = Modifier.size(26.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // 🔔 Notifikasi Button
+                        IconButton(onClick = { navController.navigate("notifikasi") }) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notifikasi",
+                                tint = colorScheme.onBackground,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // ⚙️ Settings Button
+                        IconButton(onClick = { /* TODO: Arahkan ke halaman settings */ }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = colorScheme.onBackground,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -202,26 +205,23 @@ fun HomeCard(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val gradientBrush = androidx.compose.ui.graphics.Brush.linearGradient(
-        colors = listOf(
-            backgroundColor,                // warna utama
-            Color.White.copy(alpha = 0.5f)  // putih lembut di sisi kanan
-        ),
+        colors = listOf(backgroundColor, Color.White.copy(alpha = 0.5f)),
         start = androidx.compose.ui.geometry.Offset(0f, 0f),
-        end = androidx.compose.ui.geometry.Offset(1050f, 0f) // kiri → kanan
+        end = androidx.compose.ui.geometry.Offset(1050f, 0f)
     )
 
-    androidx.compose.material3.Card(
+    Card(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 10.dp)
             .height(150.dp),
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
         Row(
             modifier = Modifier
-                .background(brush = gradientBrush) // 🌈 gradasi kiri ke kanan
+                .background(brush = gradientBrush)
                 .fillMaxSize()
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -245,7 +245,6 @@ fun HomeCard(
                 )
             }
 
-            // 📸 Gambar di sisi kanan
             Image(
                 painter = painterResource(id = imageRes),
                 contentDescription = null,
@@ -257,37 +256,22 @@ fun HomeCard(
     }
 }
 
-
 @Composable
 fun HomeBottomBar() {
     val colorScheme = MaterialTheme.colorScheme
 
-    NavigationBar(
-        containerColor = colorScheme.background, // 🎨 mengikuti warna latar tema
-    ) {
+    NavigationBar(containerColor = colorScheme.background) {
         NavigationBarItem(
             selected = true,
             onClick = { },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Home",
-                    tint = colorScheme.onBackground // ikon adaptif
-                )
-            },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = colorScheme.onBackground) },
             label = { Text("Home", color = colorScheme.onBackground) }
         )
 
         NavigationBarItem(
             selected = false,
             onClick = { },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = colorScheme.onBackground
-                )
-            },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = colorScheme.onBackground) },
             label = { Text("Profile", color = colorScheme.onBackground) }
         )
     }

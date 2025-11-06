@@ -175,13 +175,17 @@ fun JadwalRekrutmenScreen(
 
             // ===== Tombol Tambah Jadwal =====
             Button(
-                onClick = { navController.navigate("tambahJadwal") },
+                onClick = {
+                    // ✅ Navigasi ke halaman tambah jadwal di dalam jadwal_graph
+                    navController.navigate("tambahJadwal")
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2))
             ) {
                 Text("+ Tambah Jadwal", color = Color.White)
             }
+
 
             Spacer(Modifier.height(16.dp))
 

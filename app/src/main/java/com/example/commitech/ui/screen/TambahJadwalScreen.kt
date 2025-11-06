@@ -146,16 +146,17 @@ fun TambahJadwalScreen(
                             wktMulai.ifBlank { "-" },
                             wktSelesai.ifBlank { "-" }
                         )
-                        // ✅ Navigasi balik ke jadwal rekrutmen tanpa kehilangan ViewModel
-                        navController.navigate("jadwal_graph") {
-                            popUpTo("jadwal_graph") { inclusive = true }
-                        }
+
+                        // ✅ Langsung kembali ke halaman sebelumnya (JadwalRekrutmenScreen)
+                        navController.popBackStack()
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Simpan Jadwal")
             }
+
+
 
 
             // 🔹 DatePicker dialogs

@@ -1,22 +1,18 @@
 package com.example.commitech.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.navigation
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.commitech.ui.screen.*
+import com.example.commitech.ui.screens.jadwal.UbahJadwalScreen
 import com.example.commitech.ui.viewmodel.*
 
 @Composable
 fun AppNavGraph() {
     val navController = rememberNavController()
-
-    // ✅ Shared ViewModel untuk semua halaman jadwal
-    val jadwalViewModel: JadwalViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -42,7 +38,7 @@ fun AppNavGraph() {
             )
         }
 
-        // 🔐 Login Screen
+        // 🔐 Login
         composable("login") {
             LoginScreen(
                 onBackClick = { navController.popBackStack() },
@@ -56,16 +52,16 @@ fun AppNavGraph() {
             )
         }
 
-        // 📝 Register Screen
+        // 📝 Register
         composable("register") {
             SignUpScreen(
                 onBackClick = { navController.popBackStack() },
                 onLoginClick = { navController.navigate("login") },
-                onSignUpClick = { navController.navigate("login") },
+                onSignUpClick = { navController.navigate("login") }
             )
         }
 
-        // 🏡 Home Screen
+        // 🏡 Home
         composable("home") {
             HomeScreen(
                 navController = navController,
@@ -80,28 +76,19 @@ fun AppNavGraph() {
         // 📄 Data Pendaftar
         composable("dataPendaftar") {
             val viewModel: DataPendaftarViewModel = viewModel()
-            DataPendaftarScreen(
-                viewModel = viewModel,
-                onBackClick = { navController.popBackStack() }
-            )
+            DataPendaftarScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
         }
 
         // 📋 Seleksi Berkas
         composable("seleksiBerkas") {
             val viewModel: SeleksiBerkasViewModel = viewModel()
-            SeleksiBerkasScreen(
-                viewModel = viewModel,
-                onBackClick = { navController.popBackStack() }
-            )
+            SeleksiBerkasScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
         }
 
         // 💬 Seleksi Wawancara
         composable("seleksiWawancara") {
             val viewModel: SeleksiWawancaraViewModel = viewModel()
-            SeleksiWawancaraScreen(
-                viewModel = viewModel,
-                onBackClick = { navController.popBackStack() }
-            )
+            SeleksiWawancaraScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
         }
 
         // 📢 Pengumuman Kelulusan
@@ -120,29 +107,52 @@ fun AppNavGraph() {
             UbahDetailScreen(navController, namaPeserta, viewModel)
         }
 
-        // 🗓 Jadwal Graph (semua halaman pakai ViewModel yang sama)
+        // 📅 Graph Jadwal Rekrutmen
         navigation(
             startDestination = "jadwalRekrutmen",
             route = "jadwal_graph"
         ) {
-            composable("jadwalRekrutmen") {
-                // ✅ gunakan shared instance
-                JadwalRekrutmenScreen(navController, jadwalViewModel)
+            // ✅ Shared ViewModel untuk semua halaman jadwal
+            composable("jadwalRekrutmen") { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("jadwal_graph")
+                }
+                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
+                JadwalRekrutmenScreen(
+                    navController = navController,
+                    viewModel = sharedViewModel
+                )
             }
 
-            composable("tambahJadwal") {
-                // ✅ gunakan shared instance juga
-                TambahJadwalScreen(navController, jadwalViewModel)
+            composable("tambahJadwal") { backStackEntry ->
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("jadwal_graph")
+                }
+                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
+                TambahJadwalScreen(
+                    navController = navController,
+                    viewModel = sharedViewModel
+                )
             }
 
             composable(
                 route = "ubahJadwal/{jadwalId}",
-                arguments = listOf(navArgument("jadwalId") { type = NavType.StringType })
+                arguments = listOf(navArgument("jadwalId") { type = NavType.IntType })
             ) { backStackEntry ->
-                val id = backStackEntry.arguments?.getString("jadwalId")?.toIntOrNull() ?: 0
-                // ✅ pakai shared ViewModel yang sama
-                UbahJadwalScreen(navController, id, jadwalViewModel)
+                val parentEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry("jadwal_graph")
+                }
+                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
+                val id = backStackEntry.arguments?.getInt("jadwalId") ?: return@composable
+                UbahJadwalScreen(navController, sharedViewModel, id)
+
             }
+            composable("notifikasi") {
+                val jadwalViewModel: JadwalViewModel = viewModel()
+                NotifikasiScreen(navController = navController, viewModel = jadwalViewModel)
+            }
+
         }
+
     }
 }
