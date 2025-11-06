@@ -4,11 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -18,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -32,6 +37,7 @@ fun DataPendaftarScreen(
     onBackClick: () -> Unit
 ) {
     val customColors = LocalTheme.current
+    val pendaftarState by viewModel.pendaftarList.collectAsState()
 
     Scaffold(
         topBar = {
@@ -113,7 +119,7 @@ fun DataPendaftarScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "${viewModel.dummyPendaftarList.size}",
+                            text = "${pendaftarState.size}",
                             fontSize = 40.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1A1A40)
@@ -169,10 +175,19 @@ fun DataPendaftarScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                itemsIndexed(viewModel.dummyPendaftarList) { index, pendaftar ->
+                itemsIndexed(pendaftarState) { index, pendaftar ->
                     PendaftarItem(
                         index = index + 1,
-                        pendaftar = pendaftar
+                        pendaftar = pendaftar,
+                        onDelete = { pendaftarToDelete ->
+                            viewModel.deletePendaftar(pendaftarToDelete)
+                        },
+                        onUpdate = { pendaftarToUpdate ->
+                            viewModel.updatePendaftar(pendaftarToUpdate)
+                        },
+                        onEdit = { pendaftarBaru ->
+                            viewModel.editPendaftar(pendaftarBaru)
+                        }
                     )
                 }
             }
@@ -183,9 +198,13 @@ fun DataPendaftarScreen(
 @Composable
 fun PendaftarItem(
     index: Int,
-    pendaftar: Pendaftar
+    pendaftar: Pendaftar,
+    onDelete: (Pendaftar) -> Unit,
+    onUpdate: (Pendaftar) -> Unit,
+    onEdit: (Pendaftar) -> Unit
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -230,7 +249,7 @@ fun PendaftarItem(
 
             // Tombol Info
             IconButton(
-                onClick = { showDialog = true },
+                onClick = { showDetailDialog = true },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
@@ -244,10 +263,27 @@ fun PendaftarItem(
     }
 
     // Dialog Detail Pendaftar
-    if (showDialog) {
+    if (showDetailDialog) {
         DetailPendaftarDialog(
             pendaftar = pendaftar,
-            onDismiss = { showDialog = false }
+            onDismiss = { showDetailDialog = false },
+            onDelete = {
+                onDelete(pendaftar)
+                showDetailDialog = false
+            },
+            onUpdate = {
+                showDetailDialog = false
+                showEditDialog = true
+            }
+        )
+    }
+
+    // Dialog Edit Pendaftar
+    if (showEditDialog) {
+        EditPendaftarDialog(
+            pendaftar = pendaftar,
+            onDismiss = { showEditDialog = false },
+            onSave = onEdit
         )
     }
 }
@@ -255,7 +291,9 @@ fun PendaftarItem(
 @Composable
 fun DetailPendaftarDialog(
     pendaftar: Pendaftar,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+    onUpdate: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -299,27 +337,27 @@ fun DetailPendaftarDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Detail Informasi
+                // Detail Informasi (Menggunakan data dari Pendaftar)
                 DetailRowPendaftar(
                     label = "Pilihan Divisi 1",
-                    value = "Konsumsi"
+                    value = pendaftar.divisi1
                 )
 
                 DetailRowPendaftar(
                     label = "Alasan Memilih Divisi 1",
-                    value = "ingin menjadi bagian\ndari divisi konsumsi"
+                    value = pendaftar.alasan1
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DetailRowPendaftar(
                     label = "Pilihan Divisi 2",
-                    value = "Acara"
+                    value = pendaftar.divisi2
                 )
 
                 DetailRowPendaftar(
-                    label = "Alasan Memilih Divisi 1",
-                    value = "ingin menjadi bagian\ndari divisi Acara"
+                    label = "Alasan Memilih Divisi 2",
+                    value = pendaftar.alasan2
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -328,6 +366,181 @@ fun DetailPendaftarDialog(
                 DetailRowWithCheck(label = "Surat Komitmen")
                 DetailRowWithCheck(label = "CV")
                 DetailRowWithCheck(label = "KRS")
+
+                // Tombol Update & Delete
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Tombol Update (PERBAIKAN: Spacer dikurangi menjadi 4.dp)
+                    Button(
+                        onClick = onUpdate,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF57C00) // Warna oranye
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Update",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp)) // <-- PERBAIKAN DI SINI
+                            Text(
+                                "Update",
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Tombol Delete (PERBAIKAN: Spacer dikurangi menjadi 4.dp)
+                    Button(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.error // Warna merah
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Hapus",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp)) // <-- PERBAIKAN DI SINI
+                            Text(
+                                "Hapus",
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditPendaftarDialog(
+    pendaftar: Pendaftar,
+    onDismiss: () -> Unit,
+    onSave: (Pendaftar) -> Unit
+) {
+    var nama by remember { mutableStateOf(pendaftar.nama) }
+    var nim by remember { mutableStateOf(pendaftar.nim) }
+    var divisi1 by remember { mutableStateOf(pendaftar.divisi1) }
+    var alasan1 by remember { mutableStateOf(pendaftar.alasan1) }
+    var divisi2 by remember { mutableStateOf(pendaftar.divisi2) }
+    var alasan2 by remember { mutableStateOf(pendaftar.alasan2) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Edit Pendaftar",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A40)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = nama,
+                        onValueChange = { nama = it },
+                        label = { Text("Nama") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = nim,
+                        onValueChange = { nim = it },
+                        label = { Text("NIM") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = divisi1,
+                        onValueChange = { divisi1 = it },
+                        label = { Text("Pilihan Divisi 1") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = alasan1,
+                        onValueChange = { alasan1 = it },
+                        label = { Text("Alasan Divisi 1") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        minLines = 2
+                    )
+
+                    OutlinedTextField(
+                        value = divisi2,
+                        onValueChange = { divisi2 = it },
+                        label = { Text("Pilihan Divisi 2") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = alasan2,
+                        onValueChange = { alasan2 = it },
+                        label = { Text("Alasan Divisi 2") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        minLines = 2
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Batal")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val pendaftarBaru = pendaftar.copy(
+                                id = pendaftar.id,
+                                nama = nama,
+                                nim = nim,
+                                divisi1 = divisi1,
+                                alasan1 = alasan1,
+                                divisi2 = divisi2,
+                                alasan2 = alasan2
+                            )
+                            onSave(pendaftarBaru)
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text("Simpan")
+                    }
+                }
             }
         }
     }
