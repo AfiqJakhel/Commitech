@@ -35,7 +35,7 @@ fun SeleksiBerkasScreen(
     val isDark = isSystemInDarkTheme()
 
     // 🎨 Warna berdasarkan tema
-    val backgroundColor = if (isDark) Color(0xFF121212) else Color(0xFFEAFBE9)
+    val backgroundColor = if (isDark) Color(0xFF121212) else Color.White
     val cardColor = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
     val subTitleColor = if (isDark) Color(0xFFBDBDBD) else Color(0xFF4A3A79)
@@ -395,11 +395,16 @@ fun AcceptDialog(
 ) {
     var reason by remember { mutableStateOf("") }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false // ✅ bikin background hitam full
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
+                .background(Color.Black.copy(alpha = 0.6f)) // ✅ gelap penuh seperti InfoDialog
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -416,8 +421,6 @@ fun AcceptDialog(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
-                    // ❌ Tombol close di kanan atas
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -432,8 +435,6 @@ fun AcceptDialog(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    // 🔹 Judul
                     Text(
                         text = "Anda Yakin Untuk\nMenerima Peserta ini?",
                         color = Color(0xFF4A3A79),
@@ -444,8 +445,6 @@ fun AcceptDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // ✅ Ikon besar
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
@@ -454,8 +453,6 @@ fun AcceptDialog(
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // 💬 Kolom alasan
                     OutlinedTextField(
                         value = reason,
                         onValueChange = { reason = it },
@@ -476,36 +473,25 @@ fun AcceptDialog(
                             focusedIndicatorColor = Color(0xFF4CAF50),
                             unfocusedIndicatorColor = Color.Transparent
                         )
-
-
                     )
 
-
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // 🟩 Tombol konfirmasi
                     Button(
-                        onClick = {
-                            if (reason.isNotBlank()) onConfirm(reason)
-                        },
+                        onClick = { if (reason.isNotBlank()) onConfirm(reason) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(
-                            text = "Terima",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Text("Terima", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
         }
     }
 }
+
 
 
 @Composable
@@ -564,11 +550,16 @@ fun RejectDialog(
 ) {
     var reason by remember { mutableStateOf("") }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false // ✅ biar background hitam full juga
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
+                .background(Color.Black.copy(alpha = 0.6f)) // ✅ samain gelapnya
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -585,7 +576,6 @@ fun RejectDialog(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -600,7 +590,6 @@ fun RejectDialog(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Text(
                         text = "Anda Yakin Untuk\nMenolak Peserta ini?",
                         color = Color(0xFF4A3A79),
@@ -611,7 +600,6 @@ fun RejectDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
@@ -620,17 +608,11 @@ fun RejectDialog(
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // 💬 Kolom alasan (tanpa OutlinedTextField)
                     TextField(
                         value = reason,
                         onValueChange = { reason = it },
                         placeholder = {
-                            Text(
-                                "Tuliskan alasan anda...",
-                                fontSize = 13.sp,
-                                color = Color.Gray
-                            )
+                            Text("Tuliskan alasan anda...", fontSize = 13.sp, color = Color.Gray)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -640,17 +622,13 @@ fun RejectDialog(
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color(0xFFF2F2F2),
                             unfocusedContainerColor = Color(0xFFF2F2F2),
-                            disabledContainerColor = Color(0xFFF2F2F2),
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
                             cursorColor = Color.Black
                         )
                     )
 
-
                     Spacer(modifier = Modifier.height(20.dp))
-
                     Button(
                         onClick = { if (reason.isNotBlank()) onConfirm(reason) },
                         modifier = Modifier
@@ -659,12 +637,7 @@ fun RejectDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(
-                            text = "Tolak",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Text("Tolak", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
