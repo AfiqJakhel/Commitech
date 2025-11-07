@@ -29,7 +29,7 @@ fun SplashScreen(
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(1500)
+        delay(1000)
         onSplashFinished()
     }
 

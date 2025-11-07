@@ -95,7 +95,26 @@ class SeleksiWawancaraViewModel : ViewModel() {
         _days[dayIndex] = day.copy(participants = updated)
     }
 
-
-
+    // Update participant by name (untuk UbahDetailScreen)
+    fun updateParticipantByName(name: String, newStatus: InterviewStatus, newDivision: String) {
+        for (dayIndex in _days.indices) {
+            val day = _days[dayIndex]
+            val participantIndex = day.participants.indexOfFirst { it.name == name }
+            
+            if (participantIndex != -1) {
+                val updated = day.participants.toMutableList()
+                val p = updated[participantIndex]
+                
+                updated[participantIndex] = p.copy(
+                    status = newStatus,
+                    division = if (newStatus == InterviewStatus.ACCEPTED) newDivision else "",
+                    reason = if (newStatus == InterviewStatus.REJECTED) "Diubah menjadi ditolak" else ""
+                )
+                
+                _days[dayIndex] = day.copy(participants = updated)
+                break
+            }
+        }
+    }
 
 }

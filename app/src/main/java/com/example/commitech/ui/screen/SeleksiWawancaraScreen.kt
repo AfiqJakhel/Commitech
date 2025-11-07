@@ -6,11 +6,13 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,8 +22,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,49 +51,133 @@ fun SeleksiWawancaraScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Jadwal", "Status")
 
+    val colorScheme = MaterialTheme.colorScheme
+    val totalPeserta = viewModel.totalParticipants()
+    
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text("Seleksi Wawancara", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Text("${viewModel.totalParticipants()} Peserta", fontSize = 14.sp, color = Color.Gray)
-                    }
+                    Text(
+                        "Seleksi Wawancara",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = colorScheme.onBackground
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colorScheme.onBackground
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = colorScheme.background
+                )
             )
-        }
+        },
+        containerColor = colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            PrimaryTabRow(
+            // Header Card dengan Total Peserta
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .shadow(6.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surface
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Total Peserta",
+                            fontSize = 14.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "$totalPeserta Peserta",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = colorScheme.primary
+                        )
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                colorScheme.primary.copy(alpha = 0.1f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.People,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+            
+            // Modern Tabs
+            TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.White,
+                containerColor = colorScheme.background,
+                contentColor = colorScheme.primary,
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        Box(
+                            Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTab])
+                                .height(4.dp)
+                                .padding(horizontal = 40.dp)
+                                .background(
+                                    color = colorScheme.primary,
+                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                )
+                        )
+                    }
+                },
                 divider = {}
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
+                        modifier = Modifier.padding(vertical = 12.dp),
                         text = {
                             Text(
                                 title,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selectedTab == index) Color(0xFF1A1A40) else Color.Gray
+                                fontSize = 16.sp,
+                                color = if (selectedTab == index) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                         }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             when (selectedTab) {
                 0 -> WawancaraJadwalContent(
@@ -166,58 +255,99 @@ fun FilterChip(
     onSelect: (InterviewStatus?) -> Unit
 ) {
     val selected = selectedStatus == status
+    val colorScheme = MaterialTheme.colorScheme
+    
     Surface(
-        shape = RoundedCornerShape(50),
-        color = if (selected) Color(0xFF1A1A40) else Color(0xFFE9E9E9),
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) colorScheme.primary else colorScheme.surface,
+        shadowElevation = if (selected) 4.dp else 2.dp,
         modifier = Modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(20.dp))
             .clickable { onSelect(status) }
     ) {
         Text(
             text = label,
-            color = if (selected) Color.White else Color(0xFF464646),
-            fontSize = 12.sp,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            color = if (selected) Color.White else colorScheme.onSurface,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
 }
 
 @Composable
 fun StatusRow(no: Int, name: String, status: InterviewStatus) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth()
+    val colorScheme = MaterialTheme.colorScheme
+    val statusColor = when (status) {
+        InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
+        InterviewStatus.REJECTED -> Color(0xFFD32F2F)
+        else -> Color(0xFFFF9800)
+    }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        )
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            Text("$no.")
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Text(name, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.Info, contentDescription = "Detail", tint = Color(0xFF2196F3))
+            // Number Badge
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        colorScheme.primary.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "$no",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = colorScheme.primary
+                )
             }
-
+            
             Spacer(modifier = Modifier.width(12.dp))
+            
+            // Name
             Text(
-                when (status) {
-                    InterviewStatus.ACCEPTED -> "Diterima"
-                    InterviewStatus.REJECTED -> "Ditolak"
-                    else -> "Pending"
-                },
-                color = when (status) {
-                    InterviewStatus.ACCEPTED -> Color(0xFF2E7D32)
-                    InterviewStatus.REJECTED -> Color(0xFFD32F2F)
-                    else -> Color.Gray
-                },
-                fontWeight = FontWeight.SemiBold
+                name,
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                color = colorScheme.onSurface
             )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Status Badge
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = statusColor.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    when (status) {
+                        InterviewStatus.ACCEPTED -> "Diterima"
+                        InterviewStatus.REJECTED -> "Ditolak"
+                        else -> "Pending"
+                    },
+                    color = statusColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }
@@ -226,15 +356,17 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
 fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
     val day = viewModel.days[dayIndex]
     var expanded by remember { mutableStateOf(false) }
+    val colorScheme = MaterialTheme.colorScheme
 
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        tonalElevation = 6.dp,
-        shadowElevation = 6.dp,
-        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
+            .shadow(6.dp, RoundedCornerShape(18.dp))
+            .animateContentSize(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        )
     ) {
         Column(
             modifier = Modifier
@@ -247,25 +379,62 @@ fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        "${day.dayName}, ${day.date}",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        color = Color(0xFF1A1A40)
-                    )
-                    Text(
-                        day.location,
-                        fontSize = 13.sp,
-                        color = Color(0xFF6E6E6E)
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Day Icon
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                colorScheme.primary.copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            day.dayName.take(3),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = colorScheme.primary
+                        )
+                    }
+                    
+                    Spacer(Modifier.width(12.dp))
+                    
+                    Column {
+                        Text(
+                            "${day.dayName}, ${day.date}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            day.location,
+                            fontSize = 13.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        if (day.participants.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "${day.participants.size} peserta",
+                                fontSize = 12.sp,
+                                color = colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
                 }
+                
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = Color(0xFF1A1A40)
+                    tint = colorScheme.primary
                 )
             }
 
@@ -325,42 +494,82 @@ fun ParticipantCard(
         label = "shadowAnim"
     )
 
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = animatedShadow,
-        border = BorderStroke(2.dp, animatedBorderColor),
+    val colorScheme = MaterialTheme.colorScheme
+    
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 6.dp)
+            .shadow(animatedShadow, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        ),
+        border = BorderStroke(2.dp, animatedBorderColor)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            Column(Modifier.weight(1f)) {
-                Text(
-                    participant.time,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = Color(0xFF005CBB)
-                )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         participant.name,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1A1A40)
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
                     )
-                    Spacer(Modifier.width(8.dp))
-
-                    CircleIconButton(
-                        icon = Icons.Default.Info,
-                        background = Color(0xFFE3F2FD),
-                        tint = Color(0xFF2196F3)
-                    ) { showInfoDialog = true }
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Time
+                        Text(
+                            participant.time,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        
+                        // Status
+                        if (participant.status != InterviewStatus.PENDING) {
+                            Text("•", color = colorScheme.onSurface.copy(alpha = 0.3f))
+                            Text(
+                                when (participant.status) {
+                                    InterviewStatus.ACCEPTED -> "✓ Diterima"
+                                    InterviewStatus.REJECTED -> "✗ Ditolak"
+                                    else -> ""
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = when (participant.status) {
+                                    InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
+                                    InterviewStatus.REJECTED -> Color(0xFFD32F2F)
+                                    else -> colorScheme.onSurface
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Info Button
+                IconButton(
+                    onClick = { showInfoDialog = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "Info",
+                        tint = colorScheme.primary.copy(alpha = 0.7f),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
@@ -661,7 +870,7 @@ fun AcceptDialog(
     onConfirm: (String) -> Unit
 ) {
     var selectedDivision by remember { mutableStateOf("") }
-    val divisions = listOf("Konsumsi", "Acara", "Humas", "Perlengkapan")
+    val divisions = listOf("Acara", "Humas", "Konsumsi", "Perlengkapan")
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(

@@ -1,12 +1,19 @@
 package com.example.commitech.ui.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -15,7 +22,6 @@ import com.example.commitech.ui.viewmodel.JadwalViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.compose.ui.graphics.Color
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,107 +41,207 @@ fun TambahJadwalScreen(
     var waktuMulaiDialog by remember { mutableStateOf(false) }
     var waktuSelesaiDialog by remember { mutableStateOf(false) }
 
-    val dateFormatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy", Locale("in", "ID"))
+    val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("in", "ID"))
+    val colorScheme = MaterialTheme.colorScheme
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Tambah",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            color = Color(0xFF1A1A40)
-                        )
-                        Text(
-                            text = "Jadwal",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            color = Color(0xFF1A1A40)
-                        )
-                    }
+                    Text(
+                        text = "Tambah Jadwal",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = colorScheme.onBackground
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Kembali",
-                            tint = Color(0xFF1A1A40)
+                            tint = colorScheme.onBackground
                         )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+                    containerColor = colorScheme.background
                 )
             )
-        }
+        },
+        containerColor = colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
-                .fillMaxSize(),
+                .padding(horizontal = 20.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
-            OutlinedTextField(
-                value = judul,
-                onValueChange = { judul = it },
-                label = { Text("Judul") },
-                placeholder = { Text("isi Judul tempat disini...") },
+            Spacer(Modifier.height(16.dp))
+            
+            // Card untuk form
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-            )
-
-            Text("Waktu", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(Modifier.height(12.dp))
-
-            // 🔹 Baris tanggal mulai & selesai
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedButton(
-                    onClick = { tanggalMulaiDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (tglMulai.isBlank()) "Pilih Tanggal Mulai" else tglMulai)
-                }
-                Spacer(Modifier.width(10.dp))
-                OutlinedButton(
-                    onClick = { tanggalSelesaiDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (tglSelesai.isBlank()) "Pilih Tanggal Selesai" else tglSelesai)
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // 🔹 Baris waktu mulai & selesai
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .shadow(8.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surface
+                )
             ) {
-                OutlinedButton(
-                    onClick = { waktuMulaiDialog = true },
-                    modifier = Modifier.weight(1f)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
                 ) {
-                    Text(if (wktMulai.isBlank()) "09.00" else wktMulai)
-                }
-                Spacer(Modifier.width(10.dp))
-                Text("→", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(10.dp))
-                OutlinedButton(
-                    onClick = { waktuSelesaiDialog = true },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(if (wktSelesai.isBlank()) "15.00" else wktSelesai)
+                    Text(
+                        "Informasi Jadwal",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = colorScheme.onSurface
+                    )
+                    
+                    Spacer(Modifier.height(20.dp))
+                    
+                    OutlinedTextField(
+                        value = judul,
+                        onValueChange = { judul = it },
+                        label = { Text("Judul Jadwal") },
+                        placeholder = { Text("Masukkan judul jadwal...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Tanggal",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = colorScheme.onSurface
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+
+                    // Baris tanggal mulai & selesai
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        OutlinedButton(
+                            onClick = { tanggalMulaiDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = colorScheme.onSurface
+                            )
+                        ) {
+                            Text(
+                                if (tglMulai.isBlank()) "Tanggal Mulai" else tglMulai,
+                                fontSize = 13.sp
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        OutlinedButton(
+                            onClick = { tanggalSelesaiDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = colorScheme.onSurface
+                            )
+                        ) {
+                            Text(
+                                if (tglSelesai.isBlank()) "Tanggal Selesai" else tglSelesai,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Waktu",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = colorScheme.onSurface
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+
+                    // Baris waktu mulai & selesai
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { waktuMulaiDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = colorScheme.onSurface
+                            )
+                        ) {
+                            Text(
+                                if (wktMulai.isBlank()) "09.00" else wktMulai,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            "→",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.primary
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        OutlinedButton(
+                            onClick = { waktuSelesaiDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = colorScheme.onSurface
+                            )
+                        ) {
+                            Text(
+                                if (wktSelesai.isBlank()) "15.00" else wktSelesai,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // 🔹 Tombol simpan
+            // Tombol simpan
             Button(
                 onClick = {
                     if (judul.isNotBlank() && tglMulai.isNotBlank() && tglSelesai.isNotBlank()) {
@@ -146,17 +252,27 @@ fun TambahJadwalScreen(
                             wktMulai.ifBlank { "-" },
                             wktSelesai.ifBlank { "-" }
                         )
-
-                        // ✅ Langsung kembali ke halaman sebelumnya (JadwalRekrutmenScreen)
                         navController.popBackStack()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .shadow(6.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.primary
+                )
             ) {
-                Text("Simpan Jadwal")
+                Text(
+                    "Simpan Jadwal",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-
-
+            
+            Spacer(Modifier.height(20.dp))
 
 
             // 🔹 DatePicker dialogs
