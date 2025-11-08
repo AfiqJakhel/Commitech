@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
-import androidx.compose.ui.window.Dialog
 
 @Composable
 fun SeleksiBerkasScreen(

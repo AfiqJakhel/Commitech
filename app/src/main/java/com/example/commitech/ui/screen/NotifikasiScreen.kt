@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +25,6 @@ import androidx.navigation.NavController
 import com.example.commitech.ui.viewmodel.JadwalViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 data class NotificationItem(
@@ -65,10 +63,8 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
         jadwalList.mapNotNull { jadwal ->
             try {
                 val mulai = LocalDate.parse(jadwal.tanggalMulai, dateFormatter)
-                val daysBetween = ChronoUnit.DAYS.between(hariIni, mulai)
-                
-                when {
-                    daysBetween == 0L -> NotificationItem(
+                when (val daysBetween = ChronoUnit.DAYS.between(hariIni, mulai)) {
+                    0L -> NotificationItem(
                         id = jadwal.id,
                         title = "Pengingat Urgent!",
                         message = "${jadwal.judul} berlangsung hari ini pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
@@ -76,7 +72,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                         type = NotificationType.URGENT,
                         icon = Icons.Default.Warning
                     )
-                    daysBetween == 1L -> NotificationItem(
+                    1L -> NotificationItem(
                         id = jadwal.id,
                         title = "Pengingat Jadwal",
                         message = "${jadwal.judul} akan berlangsung besok pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
@@ -84,11 +80,11 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                         type = NotificationType.REMINDER,
                         icon = Icons.Default.Event
                     )
-                    daysBetween in 2..30 -> NotificationItem(
+                    in 2..30 -> NotificationItem(
                         id = jadwal.id,
                         title = "Jadwal Mendatang",
                         message = "${jadwal.judul} akan berlangsung pada ${jadwal.tanggalMulai} pukul ${jadwal.waktuMulai}",
-                        time = "${daysBetween} hari lagi",
+                        time = "$daysBetween hari lagi",
                         type = NotificationType.INFO,
                         icon = Icons.Default.Info
                     )

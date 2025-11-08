@@ -3,14 +3,12 @@ package com.example.commitech.ui.navigation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.commitech.ui.screen.*
-import com.example.commitech.ui.screens.jadwal.UbahJadwalScreen
+import com.example.commitech.ui.screen.UbahJadwalScreen
 import com.example.commitech.ui.viewmodel.*
 
 // Animation constants - Modern Web Style

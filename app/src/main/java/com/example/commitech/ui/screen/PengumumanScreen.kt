@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import androidx.navigation.NavController
 import com.example.commitech.ui.viewmodel.InterviewStatus
@@ -42,7 +41,7 @@ fun PengumumanScreen(
     var selectedPeserta by remember { mutableStateOf<ParticipantInfo?>(null) }
     
     // State untuk track perubahan data
-    var refreshTrigger by remember { mutableStateOf(0) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
     
     // Sync saat pertama kali masuk
     LaunchedEffect(Unit) {
