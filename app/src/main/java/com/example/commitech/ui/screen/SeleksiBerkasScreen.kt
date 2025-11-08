@@ -1,11 +1,17 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.example.commitech.ui.screen
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,14 +22,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.window.Dialog
 
 @Composable
@@ -131,81 +139,111 @@ fun PesertaCard(
     var showRejectDialog by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<Boolean?>(null) }
 
+    val animatedBorderColor by animateColorAsState(
+        targetValue = when (status) {
+            true -> Color(0xFF4CAF50)
+            false -> Color(0xFFF44336)
+            else -> Color(0xFFE0E0E0)
+        },
+        label = "borderAnim"
+    )
+    val animatedShadow by animateDpAsState(
+        targetValue = if (status != null) 6.dp else 2.dp,
+        label = "shadowAnim"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        shape = RoundedCornerShape(10.dp),
+            .padding(vertical = 6.dp)
+            .shadow(animatedShadow, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(4.dp)
+        border = BorderStroke(2.dp, animatedBorderColor)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "$index. ${peserta.nama}",
-                fontSize = 16.sp,
-                color = textColor,
-                modifier = Modifier.weight(1f)
-            )
-
-            if (status == null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = "Info",
-                        tint = Color(0xFF2196F3),
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clickable { showInfoDialog = true }
+            Column(modifier = Modifier.weight(1f)) {
+                // Nama + Info Button
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        peserta.nama,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
                     )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Lulus",
-                        tint = Color(0xFF4CAF50),
+                    
+                    // Info Button
+                    Box(
                         modifier = Modifier
-                            .size(22.dp)
-                            .clickable { showAcceptDialog = true }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Tidak Lulus",
-                        tint = Color(0xFFF44336),
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clickable { showRejectDialog = true }
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable(
+                                onClick = { showInfoDialog = true },
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = Color(0xFF1976D2),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.height(4.dp))
+                
+                // Status
+                if (status != null) {
+                    Text(
+                        when (status) {
+                            true -> "✓ Diterima"
+                            false -> "✗ Ditolak"
+                            else -> ""
+                        },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when (status) {
+                            true -> Color(0xFF4CAF50)
+                            false -> Color(0xFFD32F2F)
+                            else -> textColor
+                        }
                     )
                 }
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val resultText = if (status == true) "Diterima" else "Ditolak"
-                    val resultColor = if (status == true) Color(0xFF2E7D32) else Color(0xFFD32F2F)
-                    val resultIcon =
-                        if (status == true) Icons.Default.CheckCircle else Icons.Default.Close
+            }
 
-                    Text(
-                        text = resultText,
-                        color = resultColor,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        imageVector = resultIcon,
-                        contentDescription = resultText,
-                        tint = resultColor,
-                        modifier = Modifier.size(20.dp)
-                    )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (status == null) {
+                    // Tombol Terima
+                    CircleIconButtonBerkas(
+                        icon = Icons.Default.CheckCircle,
+                        background = Color(0xFFE8F5E9),
+                        tint = Color(0xFF1B5E20),
+                        enabled = true
+                    ) {
+                        showAcceptDialog = true
+                    }
+
+                    // Tombol Tolak
+                    CircleIconButtonBerkas(
+                        icon = Icons.Default.Close,
+                        background = Color(0xFFFFEBEE),
+                        tint = Color(0xFFB71C1C),
+                        enabled = true
+                    ) {
+                        showRejectDialog = true
+                    }
                 }
             }
         }
@@ -642,5 +680,35 @@ fun RejectDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CircleIconButtonBerkas(
+    icon: ImageVector,
+    background: Color,
+    tint: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(if (enabled) background else background.copy(alpha = 0.5f))
+            .clickable(
+                enabled = enabled,
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) tint else tint.copy(alpha = 0.5f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

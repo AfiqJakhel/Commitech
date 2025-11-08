@@ -13,79 +13,80 @@ import com.example.commitech.ui.screen.*
 import com.example.commitech.ui.screens.jadwal.UbahJadwalScreen
 import com.example.commitech.ui.viewmodel.*
 
-// Animation constants - PowerPoint style
-private const val ANIMATION_DURATION = 500
-private const val ANIMATION_DURATION_FAST = 350
+// Animation constants - Modern Web Style
+private const val ANIMATION_DURATION = 400
+private const val ANIMATION_DURATION_FAST = 300
+private const val ANIMATION_DURATION_SLOW = 500
 
-// 🎬 PowerPoint Style: Push (Slide + Scale + Fade)
+// 🌊 Modern Web Style: Smooth Slide with Parallax Effect
 private fun powerPointPushEnter() = slideInHorizontally(
     initialOffsetX = { it },
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleIn(
-    initialScale = 0.95f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    initialScale = 0.92f,
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + fadeIn(
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
 )
 
 private fun powerPointPushExit() = slideOutHorizontally(
-    targetOffsetX = { -it / 3 },
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    targetOffsetX = { -it / 4 },
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleOut(
-    targetScale = 0.95f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    targetScale = 0.92f,
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + fadeOut(
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 )
 
 private fun powerPointPushPopEnter() = slideInHorizontally(
-    initialOffsetX = { -it / 3 },
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    initialOffsetX = { -it / 4 },
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleIn(
-    initialScale = 0.95f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    initialScale = 0.92f,
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + fadeIn(
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
 )
 
 private fun powerPointPushPopExit() = slideOutHorizontally(
     targetOffsetX = { it },
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleOut(
-    targetScale = 0.95f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    targetScale = 0.92f,
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + fadeOut(
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 )
 
-// 🎬 PowerPoint Style: Zoom (Scale + Fade)
+// ✨ Modern Web Style: Elegant Zoom with Bounce
 private fun powerPointZoomEnter() = scaleIn(
-    initialScale = 0.85f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    initialScale = 0.88f,
+    animationSpec = tween(ANIMATION_DURATION_SLOW, easing = androidx.compose.animation.core.CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f))
 ) + fadeIn(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
 )
 
 private fun powerPointZoomExit() = scaleOut(
-    targetScale = 1.1f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    targetScale = 1.08f,
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f))
 ) + fadeOut(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 )
 
-// 🎬 PowerPoint Style: Fade Through (Crossfade)
+// 🎭 Modern Web Style: Smooth Fade with Subtle Scale
 private fun powerPointFadeEnter() = fadeIn(
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleIn(
-    initialScale = 0.98f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    initialScale = 0.96f,
+    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 )
 
 private fun powerPointFadeExit() = fadeOut(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 ) + scaleOut(
-    targetScale = 1.02f,
-    animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+    targetScale = 1.04f,
+    animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f))
 )
 
 @OptIn(ExperimentalAnimationApi::class)

@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material3:material3:1.3.1")
     implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.animation.core)
 
     // ✅ LocalDate support di API < 26
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
