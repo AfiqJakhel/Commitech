@@ -357,12 +357,12 @@ fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
     val day = viewModel.days[dayIndex]
     var expanded by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
-
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(18.dp))
-            .animateContentSize(),
+            .animateContentSize()
+            .shadow(6.dp, RoundedCornerShape(18.dp)),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surface
@@ -372,7 +372,7 @@ fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
             modifier = Modifier
                 .clickable(
                     onClick = { expanded = !expanded },
-                    indication = LocalIndication.current,
+                    indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 )
                 .padding(16.dp)
@@ -514,62 +514,72 @@ fun ParticipantCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f)) {
+                // Nama + Info Button
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
                         participant.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onSurface
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    
+                    // Info Button
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable(
+                                onClick = { showInfoDialog = true },
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Time
-                        Text(
-                            participant.time,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp)
                         )
-                        
-                        // Status
-                        if (participant.status != InterviewStatus.PENDING) {
-                            Text("•", color = colorScheme.onSurface.copy(alpha = 0.3f))
-                            Text(
-                                when (participant.status) {
-                                    InterviewStatus.ACCEPTED -> "✓ Diterima"
-                                    InterviewStatus.REJECTED -> "✗ Ditolak"
-                                    else -> ""
-                                },
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = when (participant.status) {
-                                    InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
-                                    InterviewStatus.REJECTED -> Color(0xFFD32F2F)
-                                    else -> colorScheme.onSurface
-                                }
-                            )
-                        }
                     }
                 }
                 
-                // Info Button
-                IconButton(
-                    onClick = { showInfoDialog = true },
-                    modifier = Modifier.size(40.dp)
+                Spacer(Modifier.height(4.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = "Info",
-                        tint = colorScheme.primary.copy(alpha = 0.7f),
-                        modifier = Modifier.size(22.dp)
+                    // Time
+                    Text(
+                        participant.time,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.onSurface.copy(alpha = 0.6f)
                     )
+                    
+                    // Status
+                    if (participant.status != InterviewStatus.PENDING) {
+                        Text("•", color = colorScheme.onSurface.copy(alpha = 0.3f))
+                        Text(
+                            when (participant.status) {
+                                InterviewStatus.ACCEPTED -> "✓ Diterima"
+                                InterviewStatus.REJECTED -> "✗ Ditolak"
+                                else -> ""
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = when (participant.status) {
+                                InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
+                                InterviewStatus.REJECTED -> Color(0xFFD32F2F)
+                                else -> colorScheme.onSurface
+                            }
+                        )
+                    }
                 }
             }
 

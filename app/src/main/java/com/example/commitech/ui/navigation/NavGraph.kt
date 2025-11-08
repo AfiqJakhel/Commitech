@@ -176,7 +176,22 @@ fun AppNavGraph() {
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
                 onIsiJadwalClick = { navController.navigate("jadwal_graph") },
                 onSeleksiWawancaraClick = { navController.navigate("seleksiWawancara") },
-                onKelulusanClick = { navController.navigate("pengumumanKelulusan") }
+                onKelulusanClick = { navController.navigate("pengumumanKelulusan") },
+                onAboutUsClick = { navController.navigate("aboutUs") }
+            )
+        }
+
+        // ℹ️ About Us
+        composable(
+            route = "aboutUs",
+            enterTransition = { powerPointPushEnter() },
+            exitTransition = { powerPointPushExit() },
+            popEnterTransition = { powerPointPushPopEnter() },
+            popExitTransition = { powerPointPushPopExit() }
+        ) {
+            AboutUsScreen(
+                onBackClick = { navController.popBackStack() },
+                onHomeClick = { navController.popBackStack() }
             )
         }
 

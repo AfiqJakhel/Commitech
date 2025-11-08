@@ -1,21 +1,27 @@
 package com.example.commitech.ui.screen
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
 import com.example.commitech.ui.theme.LocalTheme
+import kotlinx.coroutines.delay
 
 data class HomeCardData(
     val title: String,
@@ -39,13 +46,21 @@ fun HomeScreen(
     onSeleksiBerkasClick: () -> Unit,
     onIsiJadwalClick: () -> Unit,
     onSeleksiWawancaraClick: () -> Unit,
-    onKelulusanClick: () -> Unit
+    onKelulusanClick: () -> Unit,
+    onAboutUsClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current
 
+    var isVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        delay(100)
+        isVisible = true
+    }
+
     Scaffold(
-        bottomBar = { HomeBottomBar() },
+        bottomBar = { HomeBottomBar(onAboutUsClick = onAboutUsClick) },
         containerColor = colorScheme.background
     ) { innerPadding ->
         LazyColumn(
@@ -59,86 +74,216 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 🔹 Header (Hello + Notifications + Settings)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // 🔹 Enhanced Header with Animation
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = slideInVertically(
+                        initialOffsetY = { -50 },
+                        animationSpec = tween(500)
+                    ) + fadeIn(animationSpec = tween(500))
                 ) {
-                    Column {
-                        Text(
-                            text = "Hello,",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = colorScheme.onBackground
-                        )
-                        Text(
-                            text = "Pengguna",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = colorScheme.onBackground
-                        )
-                    }
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    colorScheme.primary,
+                                                    colorScheme.secondary
+                                                )
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "P",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
+                                
+                                Column {
+                                    Text(
+                                        text = "Hello,",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = colorScheme.onBackground.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "Pengguna",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = colorScheme.onBackground
+                                    )
+                                }
+                            }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // 🔔 Notifikasi Button
-                        IconButton(onClick = { navController.navigate("notifikasi") }) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notifikasi",
-                                tint = colorScheme.onBackground,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 🔔 Notifikasi Button with animation
+                                var notifScale by remember { mutableStateOf(1f) }
+                                val notifScaleAnim by animateFloatAsState(
+                                    targetValue = notifScale,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    ),
+                                    label = "notifScale"
+                                )
+                                
+                                IconButton(
+                                    onClick = { 
+                                        navController.navigate("notifikasi")
+                                        notifScale = 0.8f
+                                    },
+                                    modifier = Modifier.scale(notifScaleAnim)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Notifikasi",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                                
+                                LaunchedEffect(notifScale) {
+                                    if (notifScale != 1f) {
+                                        delay(100)
+                                        notifScale = 1f
+                                    }
+                                }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
 
-                        // ⚙️ Settings Button
-                        IconButton(onClick = { /* TODO: Arahkan ke halaman settings */ }) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = colorScheme.onBackground,
-                                modifier = Modifier.size(26.dp)
-                            )
+                                // ⚙️ Settings Button with animation
+                                var settingsScale by remember { mutableStateOf(1f) }
+                                val settingsScaleAnim by animateFloatAsState(
+                                    targetValue = settingsScale,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    ),
+                                    label = "settingsScale"
+                                )
+                                
+                                IconButton(
+                                    onClick = { 
+                                        settingsScale = 0.8f
+                                    },
+                                    modifier = Modifier.scale(settingsScaleAnim)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                                
+                                LaunchedEffect(settingsScale) {
+                                    if (settingsScale != 1f) {
+                                        delay(100)
+                                        settingsScale = 1f
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 📊 Jumlah Pendaftar
-                Text(
-                    text = "Jumlah Pendaftar",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onBackground
-                )
-
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Angka + Deskripsi sejajar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                // 📊 Jumlah Pendaftar with Animation
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = slideInHorizontally(
+                        initialOffsetX = { -100 },
+                        animationSpec = tween(600, delayMillis = 200)
+                    ) + fadeIn(animationSpec = tween(600, delayMillis = 200))
                 ) {
-                    Text(
-                        text = "35",
-                        fontSize = 64.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "jumlah total pendaftar untuk event, mencakup semua pendaftar dari berbagai tahap seleksi",
-                        fontSize = 12.sp,
-                        color = colorScheme.onSurface.copy(alpha = 0.8f),
+                    Card(
                         modifier = Modifier
-                            .padding(start = 16.dp)
-                            .weight(1f)
-                    )
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp)
+                        ) {
+                            Text(
+                                text = "Jumlah Pendaftar",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.primary
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Angka + Deskripsi sejajar
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    colorScheme.primary,
+                                                    colorScheme.secondary
+                                                )
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "35",
+                                        fontSize = 36.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Text(
+                                    text = "jumlah total pendaftar untuk event, mencakup semua pendaftar dari berbagai tahap seleksi",
+                                    fontSize = 13.sp,
+                                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                                    lineHeight = 18.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -204,24 +349,46 @@ fun HomeCard(
     onClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val gradientBrush = androidx.compose.ui.graphics.Brush.linearGradient(
-        colors = listOf(backgroundColor, Color.White.copy(alpha = 0.5f)),
-        start = androidx.compose.ui.geometry.Offset(0f, 0f),
-        end = androidx.compose.ui.geometry.Offset(1050f, 0f)
+    
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "cardScale"
     )
 
     Card(
-        onClick = onClick,
+        onClick = {
+            isPressed = true
+            onClick()
+        },
         shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 10.dp)
-            .height(150.dp),
+            .height(150.dp)
+            .scale(scale),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
+        LaunchedEffect(isPressed) {
+            if (isPressed) {
+                delay(100)
+                isPressed = false
+            }
+        }
         Row(
             modifier = Modifier
-                .background(brush = gradientBrush)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(backgroundColor, Color.White.copy(alpha = 0.5f)),
+                        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                        end = androidx.compose.ui.geometry.Offset(1050f, 0f)
+                    )
+                )
                 .fillMaxSize()
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -257,22 +424,89 @@ fun HomeCard(
 }
 
 @Composable
-fun HomeBottomBar() {
+fun HomeBottomBar(onAboutUsClick: () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme
 
-    NavigationBar(containerColor = colorScheme.background) {
+    NavigationBar(
+        containerColor = colorScheme.surface,
+        tonalElevation = 8.dp
+    ) {
         NavigationBarItem(
             selected = true,
             onClick = { },
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = colorScheme.onBackground) },
-            label = { Text("Home", color = colorScheme.onBackground) }
+            icon = { 
+                Icon(
+                    Icons.Default.Home, 
+                    contentDescription = "Home",
+                    modifier = Modifier.size(26.dp)
+                ) 
+            },
+            label = { 
+                Text(
+                    "Home",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ) 
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = colorScheme.primary,
+                selectedTextColor = colorScheme.primary,
+                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                indicatorColor = colorScheme.primaryContainer
+            )
+        )
+
+        NavigationBarItem(
+            selected = false,
+            onClick = onAboutUsClick,
+            icon = { 
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "About Us",
+                    modifier = Modifier.size(26.dp)
+                ) 
+            },
+            label = { 
+                Text(
+                    "About Us",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ) 
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = colorScheme.primary,
+                selectedTextColor = colorScheme.primary,
+                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                indicatorColor = colorScheme.primaryContainer
+            )
         )
 
         NavigationBarItem(
             selected = false,
             onClick = { },
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = colorScheme.onBackground) },
-            label = { Text("Profile", color = colorScheme.onBackground) }
+            icon = { 
+                Icon(
+                    Icons.Default.Person, 
+                    contentDescription = "Profile",
+                    modifier = Modifier.size(26.dp)
+                ) 
+            },
+            label = { 
+                Text(
+                    "Profile",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                ) 
+            },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = colorScheme.primary,
+                selectedTextColor = colorScheme.primary,
+                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
+                indicatorColor = colorScheme.primaryContainer
+            )
         )
     }
 }
