@@ -47,7 +47,8 @@ fun HomeScreen(
     onIsiJadwalClick: () -> Unit,
     onSeleksiWawancaraClick: () -> Unit,
     onKelulusanClick: () -> Unit,
-    onAboutUsClick: () -> Unit
+    onAboutUsClick: () -> Unit,
+    onSettingsClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current
@@ -162,20 +163,10 @@ fun HomeScreen(
                                     Icon(
                                         imageVector = Icons.Default.Notifications,
                                         contentDescription = "Notifikasi",
-                                        tint = colorScheme.primary,
-                                        modifier = Modifier.size(26.dp)
+                                        tint = colorScheme.onBackground
                                     )
                                 }
                                 
-                                LaunchedEffect(notifScale) {
-                                    if (notifScale != 1f) {
-                                        delay(100)
-                                        notifScale = 1f
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(4.dp))
-
                                 // ⚙️ Settings Button with animation
                                 var settingsScale by remember { mutableStateOf(1f) }
                                 val settingsScaleAnim by animateFloatAsState(
@@ -189,6 +180,7 @@ fun HomeScreen(
                                 
                                 IconButton(
                                     onClick = { 
+                                        onSettingsClick()
                                         settingsScale = 0.8f
                                     },
                                     modifier = Modifier.scale(settingsScaleAnim)
@@ -199,6 +191,13 @@ fun HomeScreen(
                                         tint = colorScheme.primary,
                                         modifier = Modifier.size(26.dp)
                                     )
+                                }
+                                
+                                LaunchedEffect(notifScale) {
+                                    if (notifScale != 1f) {
+                                        delay(100)
+                                        notifScale = 1f
+                                    }
                                 }
                                 
                                 LaunchedEffect(settingsScale) {

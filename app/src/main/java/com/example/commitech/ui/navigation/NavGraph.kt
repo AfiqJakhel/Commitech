@@ -91,7 +91,9 @@ private fun powerPointFadeExit() = fadeOut(
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun AppNavGraph() {
+fun AppNavGraph(
+    settingsViewModel: SettingsViewModel = viewModel()
+) {
     val navController = rememberNavController()
     
     // Shared ViewModels untuk sinkronisasi data
@@ -178,7 +180,8 @@ fun AppNavGraph() {
                 onIsiJadwalClick = { navController.navigate("jadwal_graph") },
                 onSeleksiWawancaraClick = { navController.navigate("seleksiWawancara") },
                 onKelulusanClick = { navController.navigate("pengumumanKelulusan") },
-                onAboutUsClick = { navController.navigate("aboutUs") }
+                onAboutUsClick = { navController.navigate("aboutUs") },
+                onSettingsClick = { navController.navigate("settings") }
             )
         }
 
@@ -193,6 +196,25 @@ fun AppNavGraph() {
             AboutUsScreen(
                 onBackClick = { navController.popBackStack() },
                 onHomeClick = { navController.popBackStack() }
+            )
+        }
+
+        // ⚙️ Settings (menggunakan shared ViewModel)
+        composable(
+            route = "settings",
+            enterTransition = { powerPointPushEnter() },
+            exitTransition = { powerPointPushExit() },
+            popEnterTransition = { powerPointPushPopEnter() },
+            popExitTransition = { powerPointPushPopExit() }
+        ) {
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onBackClick = { navController.popBackStack() },
+                onLogoutClick = {
+                    navController.navigate("landing") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
             )
         }
 

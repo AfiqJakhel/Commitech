@@ -25,13 +25,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,8 +47,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -64,6 +71,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -764,36 +772,134 @@ fun EditScheduleDialog(
     var newLocation by remember { mutableStateOf(day.location) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(16.dp)) {
-            Column(Modifier.padding(20.dp)) {
-
-                Text(participant.name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
+            color = Color.White
+        ) {
+            Column(Modifier.padding(24.dp)) {
+                // Header dengan icon
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            color = Color(0xFF2196F3).copy(alpha = 0.1f),
+                            shape = CircleShape
+                        )
+                        .align(Alignment.CenterHorizontally),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                
                 Spacer(Modifier.height(16.dp))
+                
+                Text(
+                    participant.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = Color(0xFF1A1A40),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                
+                Text(
+                    "Edit jadwal wawancara",
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                
+                Spacer(Modifier.height(24.dp))
 
-                EditableRow("Tanggal", newDate, true) { newDate = it }
-                EditableRow("Waktu", newTime, true) { newTime = it }
-                EditableRow("Tempat", newLocation, true) { newLocation = it }
+                // Tanggal
+                Text(
+                    "Tanggal",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A40)
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = newDate,
+                    onValueChange = { newDate = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                // Waktu
+                Text(
+                    "Waktu",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A40)
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = newTime,
+                    onValueChange = { newTime = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                
+                // Tempat
+                Text(
+                    "Tempat",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A40)
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = newLocation,
+                    onValueChange = { newLocation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
 
                 Spacer(Modifier.height(24.dp))
 
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
                         onClick = { onSave(newDate, newTime, newLocation) },
                         modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                     ) {
-                        Text("Simpan")
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Simpan", fontWeight = FontWeight.Bold)
                     }
 
-                    Button(
+                    OutlinedButton(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, Color(0xFF2196F3))
                     ) {
-                        Text("Tutup")
+                        Text(
+                            "Tutup",
+                            color = Color(0xFF2196F3),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
@@ -834,46 +940,116 @@ fun RejectDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            tonalElevation = 6.dp
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
+            color = Color.White
         ) {
             Column(
-                Modifier.padding(20.dp),
+                Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Header dengan icon X merah
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(
+                            color = Color(0xFFEF5350).copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        tint = Color(0xFFEF5350),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
                 Text(
-                    "Anda Yakin Untuk Menolak Peserta ini?",
+                    "Anda Yakin Untuk Menolak\nPeserta ini?",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF1A1A40)
+                    fontSize = 20.sp,
+                    color = Color(0xFF1A1A40),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 28.sp
+                )
+                
+                Text(
+                    "Keputusan ini tidak dapat dibatalkan",
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
 
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = null,
-                    tint = Color.Red,
-                    modifier = Modifier.size(60.dp)
+                // TextField dengan label
+                Text(
+                    "Alasan Penolakan",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A40),
+                    modifier = Modifier.align(Alignment.Start)
                 )
-
-                Spacer(Modifier.height(16.dp))
-
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = reason,
                     onValueChange = { reason = it },
-                    placeholder = { Text("Tuliskan alasan penolakan...") },
-                    modifier = Modifier.fillMaxWidth()
+                    placeholder = { 
+                        Text(
+                            "Tuliskan alasan penolakan...",
+                            fontSize = 14.sp,
+                            color = Color(0xFFBDBDBD)
+                        ) 
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    maxLines = 3
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
 
-                Button(
-                    onClick = { if (reason.isNotBlank()) onConfirm(reason) },
+                // Buttons
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Tolak")
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, Color(0xFFE0E0E0))
+                    ) {
+                        Text(
+                            "Batal",
+                            color = Color(0xFF666666),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Button(
+                        onClick = { if (reason.isNotBlank()) onConfirm(reason) },
+                        modifier = Modifier.weight(1f),
+                        enabled = reason.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF5350),
+                            disabledContainerColor = Color(0xFFE0E0E0)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Tolak", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -886,48 +1062,179 @@ fun AcceptDialog(
     onConfirm: (String) -> Unit
 ) {
     var selectedDivision by remember { mutableStateOf("") }
-    val divisions = listOf("Acara", "Humas", "Konsumsi", "Perlengkapan")
+    val divisions = listOf(
+        "Acara" to Icons.Default.Event,
+        "Humas" to Icons.Default.Campaign,
+        "Konsumsi" to Icons.Default.Restaurant,
+        "Perlengkapan" to Icons.Default.Inventory
+    )
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            tonalElevation = 6.dp
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
+            color = Color.White
         ) {
             Column(
-                Modifier.padding(20.dp),
+                Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Header dengan icon
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                
+                Spacer(Modifier.height(16.dp))
+                
                 Text(
                     "Pilih Divisi Penerimaan",
-                    fontWeight = FontWeight.Bold
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A40)
+                )
+                
+                Text(
+                    "Peserta akan ditempatkan di divisi ini",
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
 
-                divisions.forEach { division ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                // Division cards
+                divisions.forEach { (division, icon) ->
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { selectedDivision = division }
-                            .padding(6.dp)
-                    ) {
-                        RadioButton(
-                            selected = selectedDivision == division,
-                            onClick = { selectedDivision = division }
+                            .padding(vertical = 6.dp)
+                            .clickable { selectedDivision = division },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedDivision == division) 
+                                Color(0xFF4CAF50).copy(alpha = 0.1f) 
+                            else 
+                                Color(0xFFF5F5F5)
+                        ),
+                        border = BorderStroke(
+                            width = 2.dp,
+                            color = if (selectedDivision == division) 
+                                Color(0xFF4CAF50) 
+                            else 
+                                Color.Transparent
                         )
-                        Text(division)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = if (selectedDivision == division)
+                                            Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                        else
+                                            Color.White,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = if (selectedDivision == division)
+                                        Color(0xFF4CAF50)
+                                    else
+                                        Color(0xFF666666),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            
+                            Spacer(Modifier.width(12.dp))
+                            
+                            Text(
+                                division,
+                                fontSize = 16.sp,
+                                fontWeight = if (selectedDivision == division) 
+                                    FontWeight.Bold 
+                                else 
+                                    FontWeight.Normal,
+                                color = if (selectedDivision == division)
+                                    Color(0xFF1A1A40)
+                                else
+                                    Color(0xFF666666),
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            RadioButton(
+                                selected = selectedDivision == division,
+                                onClick = { selectedDivision = division },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = Color(0xFF4CAF50),
+                                    unselectedColor = Color(0xFFBDBDBD)
+                                )
+                            )
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(24.dp))
 
-                Button(
-                    onClick = { if (selectedDivision.isNotBlank()) onConfirm(selectedDivision) },
+                // Buttons
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Terima")
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, Color(0xFFE0E0E0))
+                    ) {
+                        Text(
+                            "Batal",
+                            color = Color(0xFF666666),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    Button(
+                        onClick = { if (selectedDivision.isNotBlank()) onConfirm(selectedDivision) },
+                        modifier = Modifier.weight(1f),
+                        enabled = selectedDivision.isNotBlank(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            disabledContainerColor = Color(0xFFE0E0E0)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Terima",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
