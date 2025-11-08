@@ -167,35 +167,20 @@ fun AppNavGraph(
             )
         }
 
-        // 🏡 Home
+        // 🏡 Main (Home + About Us with shared bottom nav)
         composable(
             route = "home",
             enterTransition = { powerPointZoomEnter() },
             exitTransition = { powerPointZoomExit() }
         ) {
-            HomeScreen(
-                navController = navController,
+            MainScreen(
+                mainNavController = navController,
                 onDataPendaftarClick = { navController.navigate("dataPendaftar") },
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
                 onIsiJadwalClick = { navController.navigate("jadwal_graph") },
                 onSeleksiWawancaraClick = { navController.navigate("seleksiWawancara") },
                 onKelulusanClick = { navController.navigate("pengumumanKelulusan") },
-                onAboutUsClick = { navController.navigate("aboutUs") },
                 onSettingsClick = { navController.navigate("settings") }
-            )
-        }
-
-        // ℹ️ About Us
-        composable(
-            route = "aboutUs",
-            enterTransition = { powerPointPushEnter() },
-            exitTransition = { powerPointPushExit() },
-            popEnterTransition = { powerPointPushPopEnter() },
-            popExitTransition = { powerPointPushPopExit() }
-        ) {
-            AboutUsScreen(
-                onBackClick = { navController.popBackStack() },
-                onHomeClick = { navController.popBackStack() }
             )
         }
 

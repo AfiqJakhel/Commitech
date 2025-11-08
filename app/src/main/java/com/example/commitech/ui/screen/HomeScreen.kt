@@ -4,7 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -23,8 +26,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
@@ -60,18 +65,14 @@ fun HomeScreen(
         isVisible = true
     }
 
-    Scaffold(
-        bottomBar = { HomeBottomBar(onAboutUsClick = onAboutUsClick) },
-        containerColor = colorScheme.background
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
-        ) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorScheme.background)
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
+    ) {
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -143,7 +144,7 @@ fun HomeScreen(
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 // 🔔 Notifikasi Button with animation
-                                var notifScale by remember { mutableStateOf(1f) }
+                                var notifScale by remember { mutableFloatStateOf(1f) }
                                 val notifScaleAnim by animateFloatAsState(
                                     targetValue = notifScale,
                                     animationSpec = spring(
@@ -168,7 +169,7 @@ fun HomeScreen(
                                 }
                                 
                                 // ⚙️ Settings Button with animation
-                                var settingsScale by remember { mutableStateOf(1f) }
+                                var settingsScale by remember { mutableFloatStateOf(1f) }
                                 val settingsScaleAnim by animateFloatAsState(
                                     targetValue = settingsScale,
                                     animationSpec = spring(
@@ -336,7 +337,6 @@ fun HomeScreen(
                 )
             }
         }
-    }
 }
 
 @Composable
@@ -422,90 +422,3 @@ fun HomeCard(
     }
 }
 
-@Composable
-fun HomeBottomBar(onAboutUsClick: () -> Unit) {
-    val colorScheme = MaterialTheme.colorScheme
-
-    NavigationBar(
-        containerColor = colorScheme.surface,
-        tonalElevation = 8.dp
-    ) {
-        NavigationBarItem(
-            selected = true,
-            onClick = { },
-            icon = { 
-                Icon(
-                    Icons.Default.Home, 
-                    contentDescription = "Home",
-                    modifier = Modifier.size(26.dp)
-                ) 
-            },
-            label = { 
-                Text(
-                    "Home",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp
-                ) 
-            },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = colorScheme.primary,
-                selectedTextColor = colorScheme.primary,
-                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                indicatorColor = colorScheme.primaryContainer
-            )
-        )
-
-        NavigationBarItem(
-            selected = false,
-            onClick = onAboutUsClick,
-            icon = { 
-                Icon(
-                    Icons.Default.Info, 
-                    contentDescription = "About Us",
-                    modifier = Modifier.size(26.dp)
-                ) 
-            },
-            label = { 
-                Text(
-                    "About Us",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp
-                ) 
-            },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = colorScheme.primary,
-                selectedTextColor = colorScheme.primary,
-                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                indicatorColor = colorScheme.primaryContainer
-            )
-        )
-
-        NavigationBarItem(
-            selected = false,
-            onClick = { },
-            icon = { 
-                Icon(
-                    Icons.Default.Person, 
-                    contentDescription = "Profile",
-                    modifier = Modifier.size(26.dp)
-                ) 
-            },
-            label = { 
-                Text(
-                    "Profile",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp
-                ) 
-            },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = colorScheme.primary,
-                selectedTextColor = colorScheme.primary,
-                unselectedIconColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                unselectedTextColor = colorScheme.onSurface.copy(alpha = 0.6f),
-                indicatorColor = colorScheme.primaryContainer
-            )
-        )
-    }
-}
