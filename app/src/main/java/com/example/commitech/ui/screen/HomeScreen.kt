@@ -34,7 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
 import com.example.commitech.ui.theme.LocalTheme
+import com.example.commitech.ui.viewmodel.JadwalViewModel
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 data class HomeCardData(
     val title: String,
@@ -47,6 +50,7 @@ data class HomeCardData(
 @Composable
 fun HomeScreen(
     navController: androidx.navigation.NavController,
+    jadwalViewModel: JadwalViewModel,
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
     onIsiJadwalClick: () -> Unit,
@@ -63,6 +67,21 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
+    }
+    
+    // Hitung jumlah notifikasi dari jadwal
+    val jadwalList = jadwalViewModel.daftarJadwal
+    val dateFormatter = jadwalViewModel.formatter
+    val today = LocalDate.now()
+    
+    val notificationCount = jadwalList.count { jadwal ->
+        try {
+            val jadwalDate = LocalDate.parse(jadwal.tanggalMulai, dateFormatter)
+            val daysBetween = ChronoUnit.DAYS.between(today, jadwalDate)
+            daysBetween in 0..30 // Jadwal dalam 30 hari ke depan
+        } catch (e: Exception) {
+            false
+        }
     }
 
     LazyColumn(
@@ -143,7 +162,7 @@ fun HomeScreen(
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // 🔔 Notifikasi Button with animation
+                                // 🔔 Notifikasi Button with animation and badge
                                 var notifScale by remember { mutableFloatStateOf(1f) }
                                 val notifScaleAnim by animateFloatAsState(
                                     targetValue = notifScale,
@@ -161,11 +180,28 @@ fun HomeScreen(
                                     },
                                     modifier = Modifier.scale(notifScaleAnim)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = "Notifikasi",
-                                        tint = colorScheme.onBackground
-                                    )
+                                    BadgedBox(
+                                        badge = {
+                                            if (notificationCount > 0) {
+                                                Badge(
+                                                    containerColor = Color(0xFFD32F2F),
+                                                    contentColor = Color.White
+                                                ) {
+                                                    Text(
+                                                        text = if (notificationCount > 9) "9+" else notificationCount.toString(),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "Notifikasi",
+                                            tint = colorScheme.onBackground
+                                        )
+                                    }
                                 }
                                 
                                 // ⚙️ Settings Button with animation

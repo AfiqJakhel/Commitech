@@ -99,6 +99,7 @@ fun AppNavGraph(
     // Shared ViewModels untuk sinkronisasi data
     val seleksiWawancaraViewModel: SeleksiWawancaraViewModel = viewModel()
     val pengumumanViewModel: PengumumanViewModel = viewModel()
+    val jadwalViewModel: JadwalViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -175,6 +176,7 @@ fun AppNavGraph(
         ) {
             MainScreen(
                 mainNavController = navController,
+                jadwalViewModel = jadwalViewModel,
                 onDataPendaftarClick = { navController.navigate("dataPendaftar") },
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
                 onIsiJadwalClick = { navController.navigate("jadwal_graph") },
@@ -274,6 +276,17 @@ fun AppNavGraph(
             )
         }
 
+        // 🔔 Notifikasi (menggunakan shared ViewModel)
+        composable(
+            route = "notifikasi",
+            enterTransition = { powerPointPushEnter() },
+            exitTransition = { powerPointPushExit() },
+            popEnterTransition = { powerPointPushPopEnter() },
+            popExitTransition = { powerPointPushPopExit() }
+        ) {
+            NotifikasiScreen(navController = navController, viewModel = jadwalViewModel)
+        }
+
         // 📅 Graph Jadwal Rekrutmen
         navigation(
             startDestination = "jadwalRekrutmen",
@@ -286,14 +299,10 @@ fun AppNavGraph(
                 exitTransition = { powerPointPushExit() },
                 popEnterTransition = { powerPointPushPopEnter() },
                 popExitTransition = { powerPointPushPopExit() }
-            ) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("jadwal_graph")
-                }
-                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
+            ) {
                 JadwalRekrutmenScreen(
                     navController = navController,
-                    viewModel = sharedViewModel
+                    viewModel = jadwalViewModel
                 )
             }
 
@@ -303,14 +312,10 @@ fun AppNavGraph(
                 exitTransition = { powerPointPushExit() },
                 popEnterTransition = { powerPointPushPopEnter() },
                 popExitTransition = { powerPointPushPopExit() }
-            ) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("jadwal_graph")
-                }
-                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
+            ) {
                 TambahJadwalScreen(
                     navController = navController,
-                    viewModel = sharedViewModel
+                    viewModel = jadwalViewModel
                 )
             }
 
@@ -322,22 +327,8 @@ fun AppNavGraph(
                 popEnterTransition = { powerPointPushPopEnter() },
                 popExitTransition = { powerPointPushPopExit() }
             ) { backStackEntry ->
-                val parentEntry = remember(backStackEntry) {
-                    navController.getBackStackEntry("jadwal_graph")
-                }
-                val sharedViewModel: JadwalViewModel = viewModel(parentEntry)
                 val id = backStackEntry.arguments?.getInt("jadwalId") ?: return@composable
-                UbahJadwalScreen(navController, sharedViewModel, id)
-            }
-            composable(
-                route = "notifikasi",
-                enterTransition = { powerPointPushEnter() },
-                exitTransition = { powerPointPushExit() },
-                popEnterTransition = { powerPointPushPopEnter() },
-                popExitTransition = { powerPointPushPopExit() }
-            ) {
-                val jadwalViewModel: JadwalViewModel = viewModel()
-                NotifikasiScreen(navController = navController, viewModel = jadwalViewModel)
+                UbahJadwalScreen(navController, jadwalViewModel, id)
             }
 
         }

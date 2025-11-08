@@ -18,8 +18,8 @@ class JadwalViewModel : ViewModel() {
     val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("in", "ID"))
     private var nextId = 3
     private val _daftarJadwal = mutableStateListOf(
-        Jadwal(1, "Seleksi Berkas", "23 Okt 2025", "25 Okt 2025", "09.00", "15.00"),
-        Jadwal(2, "Seleksi Wawancara", "26 Okt 2025", "28 Okt 2025", "09.00", "15.00")
+        Jadwal(1, "Seleksi Berkas", "10 Nov 2025", "12 Nov 2025", "09.00", "15.00"),
+        Jadwal(2, "Seleksi Wawancara", "15 Nov 2025", "17 Nov 2025", "09.00", "15.00")
     )
     val daftarJadwal: List<Jadwal> get() = _daftarJadwal
 
