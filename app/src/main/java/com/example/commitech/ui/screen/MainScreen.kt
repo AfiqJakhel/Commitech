@@ -11,11 +11,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.commitech.ui.components.SharedBottomBar
+import com.example.commitech.ui.viewmodel.AuthViewModel
 import com.example.commitech.ui.viewmodel.JadwalViewModel
 
 @Composable
 fun MainScreen(
     mainNavController: NavHostController,
+    authViewModel: AuthViewModel,
     jadwalViewModel: JadwalViewModel,
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
@@ -61,6 +63,7 @@ fun MainScreen(
                 composable("home") {
                     HomeScreen(
                         navController = mainNavController,
+                        authViewModel = authViewModel,
                         jadwalViewModel = jadwalViewModel,
                         onDataPendaftarClick = onDataPendaftarClick,
                         onSeleksiBerkasClick = onSeleksiBerkasClick,
@@ -93,7 +96,7 @@ fun MainScreen(
                 }
 
                 composable("profile") {
-                    ProfileScreen()
+                    ProfileScreen(authViewModel = authViewModel)
                 }
             }
         }

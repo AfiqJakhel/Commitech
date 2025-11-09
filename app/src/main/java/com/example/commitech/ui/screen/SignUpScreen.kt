@@ -14,17 +14,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.commitech.ui.components.ErrorDialog
 import com.example.commitech.ui.theme.LocalTheme
+import com.example.commitech.ui.viewmodel.AuthViewModel
 
 @Composable
 fun SignUpScreen(
     onBackClick: () -> Unit,
     onSignUpClick: () -> Unit,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    authViewModel: AuthViewModel
 ) {
-    var username by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Navigate to home when registration successful
+    LaunchedEffect(authState.isAuthenticated) {
+        if (authState.isAuthenticated) {
+            onSignUpClick()
+        }
+    }
+    
+    // Show error dialog
+    authState.error?.let { errorMessage ->
+        ErrorDialog(
+            title = "Registrasi Gagal",
+            message = errorMessage,
+            onDismiss = { authViewModel.clearError() }
+        )
+    }
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -73,9 +96,9 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 🧑 Username Field
+            // 🧑 Name Field
             Text(
-                text = "Username",
+                text = "Name",
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 14.sp,
                 color = colorScheme.onBackground,
@@ -85,9 +108,39 @@ fun SignUpScreen(
             )
 
             OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                placeholder = { Text("Type your username") },
+                value = name,
+                onValueChange = { name = it },
+                placeholder = { Text("Type your name") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colorScheme.primary,
+                    unfocusedBorderColor = colorScheme.outline,
+                    cursorColor = colorScheme.primary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 📧 Email Field
+            Text(
+                text = "Email",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.sp,
+                color = colorScheme.onBackground,
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(start = 8.dp, bottom = 4.dp)
+            )
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                placeholder = { Text("Type your email") },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -168,7 +221,17 @@ fun SignUpScreen(
             val loginColor = LocalTheme.current.ButtonLogin
             // 🔘 Tombol Sign Up
             Button(
-                onClick = onSignUpClick,
+                onClick = {
+                    if (name.isNotBlank() && email.isNotBlank() && 
+                        password.isNotBlank() && confirmPassword.isNotBlank()) {
+                        if (password == confirmPassword) {
+                            authViewModel.register(name, email, password, confirmPassword)
+                        }
+                    }
+                },
+                enabled = !authState.isLoading && name.isNotBlank() && 
+                         email.isNotBlank() && password.isNotBlank() && 
+                         confirmPassword.isNotBlank() && password == confirmPassword,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -177,11 +240,18 @@ fun SignUpScreen(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = "Sign Up",
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onPrimary
-                )
+                if (authState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = "Sign Up",
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onPrimary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(36.dp))

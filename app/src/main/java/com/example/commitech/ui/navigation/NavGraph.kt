@@ -95,6 +95,7 @@ fun AppNavGraph(
     val navController = rememberNavController()
     
     // Shared ViewModels untuk sinkronisasi data
+    val authViewModel: AuthViewModel = viewModel()
     val seleksiWawancaraViewModel: SeleksiWawancaraViewModel = viewModel()
     val pengumumanViewModel: PengumumanViewModel = viewModel()
     val jadwalViewModel: JadwalViewModel = viewModel()
@@ -140,6 +141,7 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) {
             LoginScreen(
+                authViewModel = authViewModel,
                 onBackClick = { navController.popBackStack() },
                 onLoginClick = {
                     navController.navigate("home") {
@@ -160,6 +162,7 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) {
             SignUpScreen(
+                authViewModel = authViewModel,
                 onBackClick = { navController.popBackStack() },
                 onLoginClick = { navController.navigate("login") },
                 onSignUpClick = { navController.navigate("login") }
@@ -174,6 +177,7 @@ fun AppNavGraph(
         ) {
             MainScreen(
                 mainNavController = navController,
+                authViewModel = authViewModel,
                 jadwalViewModel = jadwalViewModel,
                 onDataPendaftarClick = { navController.navigate("dataPendaftar") },
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
@@ -193,9 +197,11 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) {
             SettingsScreen(
+                authViewModel = authViewModel,
                 viewModel = settingsViewModel,
                 onBackClick = { navController.popBackStack() },
                 onLogoutClick = {
+                    authViewModel.logout()
                     navController.navigate("landing") {
                         popUpTo("home") { inclusive = true }
                     }

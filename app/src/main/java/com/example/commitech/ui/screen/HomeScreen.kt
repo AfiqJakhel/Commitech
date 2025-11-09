@@ -42,6 +42,7 @@ data class HomeCardData(
 @Composable
 fun HomeScreen(
     navController: androidx.navigation.NavController,
+    authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
     jadwalViewModel: JadwalViewModel,
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
@@ -53,6 +54,7 @@ fun HomeScreen(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current
+    val authState by authViewModel.authState.collectAsState()
 
     var isVisible by remember { mutableStateOf(false) }
     
@@ -145,7 +147,7 @@ fun HomeScreen(
                                         color = colorScheme.onBackground.copy(alpha = 0.7f)
                                     )
                                     Text(
-                                        text = "Admin BEM",
+                                        text = authState.user?.name ?: "Admin BEM",
                                         fontSize = 20.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = colorScheme.onBackground

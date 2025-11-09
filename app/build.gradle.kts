@@ -65,6 +65,13 @@ dependencies {
     implementation("com.maxkeppeler.sheets-compose-dialogs:calendar:1.3.0")
     implementation("com.maxkeppeler.sheets-compose-dialogs:clock:1.3.0")
 
+    // ✅ Networking - Retrofit, OkHttp, Gson
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

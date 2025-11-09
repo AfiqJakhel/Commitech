@@ -24,8 +24,11 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(
+    authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+) {
     val colorScheme = MaterialTheme.colorScheme
+    val authState by authViewModel.authState.collectAsState()
     var isVisible by remember { mutableStateOf(false) }
     
     // Trigger animation on screen load
@@ -53,7 +56,10 @@ fun ProfileScreen() {
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
                     )
                 ) {
-                    ProfileHeaderCard()
+                    ProfileHeaderCard(
+                        userName = authState.user?.name ?: "Admin BEM",
+                        userEmail = authState.user?.email ?: "admin@bem.ac.id"
+                    )
                 }
             }
             
@@ -79,7 +85,9 @@ fun ProfileScreen() {
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
                     )
                 ) {
-                    ProfileInfoSection()
+                    ProfileInfoSection(
+                        userEmail = authState.user?.email ?: "admin@bem.ac.id"
+                    )
                 }
             }
             
@@ -100,7 +108,10 @@ fun ProfileScreen() {
 }
 
 @Composable
-fun ProfileHeaderCard() {
+fun ProfileHeaderCard(
+    userName: String = "Admin BEM",
+    userEmail: String = "admin@bem.ac.id"
+) {
     val colorScheme = MaterialTheme.colorScheme
     
     Card(
@@ -183,7 +194,7 @@ fun ProfileHeaderCard() {
                 
                 // Name
                 Text(
-                    text = "Admin BEM",
+                    text = userName,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onSurface
@@ -220,7 +231,7 @@ fun ProfileHeaderCard() {
                 
                 // Email
                 Text(
-                    text = "admin@bem.ac.id",
+                    text = userEmail,
                     fontSize = 14.sp,
                     color = colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -313,7 +324,9 @@ fun StatCard(
 }
 
 @Composable
-fun ProfileInfoSection() {
+fun ProfileInfoSection(
+    userEmail: String = "admin@bem.ac.id"
+) {
     val colorScheme = MaterialTheme.colorScheme
     
     Card(
@@ -343,7 +356,7 @@ fun ProfileInfoSection() {
             ProfileInfoItem(
                 icon = Icons.Default.Email,
                 label = "Email",
-                value = "admin@bem.ac.id"
+                value = userEmail
             )
             
             ProfileInfoItem(

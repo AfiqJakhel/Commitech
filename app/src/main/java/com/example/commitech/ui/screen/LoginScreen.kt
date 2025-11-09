@@ -14,17 +14,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.commitech.ui.components.ErrorDialog
 import com.example.commitech.ui.theme.LocalTheme
+import com.example.commitech.ui.viewmodel.AuthViewModel
 
 @Composable
 fun LoginScreen(
     onBackClick: () -> Unit,
     onLoginClick: () -> Unit,
     onForgotPassword: () -> Unit,
-    onSignUpClick: () -> Unit
+    onSignUpClick: () -> Unit,
+    authViewModel: AuthViewModel
 ) {
-    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Navigate to home when login successful
+    LaunchedEffect(authState.isAuthenticated) {
+        if (authState.isAuthenticated) {
+            onLoginClick()
+        }
+    }
+    
+    // Show error dialog
+    authState.error?.let { errorMessage ->
+        ErrorDialog(
+            title = "Login Gagal",
+            message = errorMessage,
+            onDismiss = { authViewModel.clearError() }
+        )
+    }
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -74,9 +96,9 @@ fun LoginScreen(
             }
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 🧑 Username Field
+            // 🧑 Email Field
             Text(
-                text = "Username",
+                text = "Email",
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
                 color = colorScheme.onBackground,
@@ -86,9 +108,9 @@ fun LoginScreen(
             )
 
             OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                placeholder = { Text("Type your username") },
+                value = email,
+                onValueChange = { email = it },
+                placeholder = { Text("Type your email") },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -149,7 +171,12 @@ fun LoginScreen(
             val loginColor = LocalTheme.current.ButtonLogin
             // 🔘 Tombol Login
             Button(
-                onClick = onLoginClick,
+                onClick = {
+                    if (email.isNotBlank() && password.isNotBlank()) {
+                        authViewModel.login(email, password)
+                    }
+                },
+                enabled = !authState.isLoading && email.isNotBlank() && password.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -158,11 +185,18 @@ fun LoginScreen(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = "Login",
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onPrimary
-                )
+                if (authState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colorScheme.onPrimary
+                    )
+                } else {
+                    Text(
+                        text = "Login",
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onPrimary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(36.dp))

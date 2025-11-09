@@ -35,10 +35,12 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onLogoutClick: () -> Unit = {},
+    authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
     viewModel: SettingsViewModel = viewModel()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val settingsState by viewModel.settingsState.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
     
     // Dialog states
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -92,7 +94,10 @@ fun SettingsScreen(
                     isVisible = isVisible,
                     delay = 0
                 ) {
-                    ProfileSection()
+                    ProfileSection(
+                        userName = authState.user?.name ?: "Admin BEM",
+                        userEmail = authState.user?.email ?: "admin@bem.ac.id"
+                    )
                 }
             }
             
@@ -369,7 +374,10 @@ fun AnimatedSettingsCard(
 }
 
 @Composable
-fun ProfileSection() {
+fun ProfileSection(
+    userName: String = "Admin BEM",
+    userEmail: String = "admin@bem.ac.id"
+) {
     val colorScheme = MaterialTheme.colorScheme
     
     Card(
@@ -406,14 +414,14 @@ fun ProfileSection() {
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Admin BEM",
+                    userName,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onSurface
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "admin@bem.ac.id",
+                    userEmail,
                     fontSize = 14.sp,
                     color = colorScheme.onSurface.copy(alpha = 0.6f)
                 )
