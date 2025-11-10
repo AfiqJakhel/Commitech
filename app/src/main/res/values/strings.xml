@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Commitech</string>
+
+    <!-- Notification channels -->
+    <string name="channel_interview_reminder">Pengingat Wawancara</string>
+    <string name="channel_interview_reminder_desc">Notifikasi pengingat 10 menit sebelum wawancara dimulai.</string>
+    <string name="channel_interview_warning">Peringatan Sesi Wawancara</string>
+    <string name="channel_interview_warning_desc">Peringatan ketika waktu wawancara hampir selesai.</string>
+
+    <!-- Notification copy -->
+    <string name="notification_reminder_title">Pengingat Wawancara</string>
+    <string name="notification_reminder_body">%1$s dijadwalkan pada %2$s</string>
+    <string name="notification_warning_title">5 menit tersisa untuk %1$s</string>
+    <string name="notification_warning_body">%1$s</string>
+    <string name="notification_complete_title">Wawancara %1$s selesai</string>
+    <string name="notification_complete_body">%1$s</string>
 </resources>

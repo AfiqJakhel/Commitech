@@ -1,5 +1,10 @@
 package com.example.commitech.ui.screen
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -60,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,16 +76,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.commitech.notification.InterviewAlarmScheduler
+import com.example.commitech.notification.InterviewNotificationHelper
 import com.example.commitech.ui.components.CircleIconButton
 import com.example.commitech.ui.viewmodel.DayData
+import com.example.commitech.ui.viewmodel.InterviewEvent
 import com.example.commitech.ui.viewmodel.InterviewStatus
 import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
+import kotlinx.coroutines.flow.collect
+import android.app.TimePickerDialog
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,6 +115,45 @@ fun SeleksiWawancaraScreen(
 
     val colorScheme = MaterialTheme.colorScheme
     val totalPeserta = viewModel.totalParticipants()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        InterviewNotificationHelper.ensureChannels(context)
+    }
+
+    LaunchedEffect(viewModel.days) {
+        viewModel.days.forEachIndexed { dayIndex, day ->
+            day.participants.forEachIndexed { participantIndex, _ ->
+                val schedule = viewModel.buildReminderSchedule(dayIndex, participantIndex)
+                if (schedule != null && viewModel.registerReminder(schedule)) {
+                    InterviewAlarmScheduler.scheduleReminder(context, schedule)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is InterviewEvent.FiveMinuteWarning -> {
+                    triggerWarningVibration(context)
+                    InterviewNotificationHelper.showWarningNotification(
+                        context = context,
+                        participantName = event.participantName,
+                        scheduleLabel = event.scheduleLabel
+                    )
+                }
+
+                is InterviewEvent.InterviewFinished -> {
+                    InterviewNotificationHelper.showCompletionNotification(
+                        context = context,
+                        participantName = event.participantName,
+                        scheduleLabel = event.scheduleLabel
+                    )
+                }
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -518,7 +580,9 @@ fun ParticipantCard(
     var showEditDialog by remember { mutableStateOf(false) }
     var showRejectDialog by remember { mutableStateOf(false) }
     var showAcceptDialog by remember { mutableStateOf(false) }
-    val isDone = participant.status != InterviewStatus.PENDING
+    val isPending = participant.status == InterviewStatus.PENDING
+    val canModifyResult = isPending && participant.hasCompleted
+    val canEditSchedule = !participant.hasStarted
 
     val animatedBorderColor by animateColorAsState(
         targetValue = when (participant.status) {
@@ -546,134 +610,139 @@ fun ParticipantCard(
         ),
         border = BorderStroke(2.dp, animatedBorderColor)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                // Nama + Info Button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        participant.name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface
-                    )
-                    
-                    // Info Button
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .clickable(
-                                onClick = { showInfoDialog = true },
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ),
-                        contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "Info",
-                            tint = Color(0xFF1976D2),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                
-                Spacer(Modifier.height(4.dp))
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Time
-                    Text(
-                        participant.time,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    
-                    // Status
-                    if (participant.status != InterviewStatus.PENDING) {
-                        Text("•", color = colorScheme.onSurface.copy(alpha = 0.3f))
                         Text(
-                            when (participant.status) {
-                                InterviewStatus.ACCEPTED -> "✓ Diterima"
-                                InterviewStatus.REJECTED -> "✗ Ditolak"
-                                else -> ""
-                            },
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = when (participant.status) {
-                                InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
-                                InterviewStatus.REJECTED -> Color(0xFFD32F2F)
-                                else -> colorScheme.onSurface
-                            }
+                            participant.name,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .clickable(
+                                    onClick = { showInfoDialog = true },
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "Info",
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            participant.time,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+
+                        if (participant.status != InterviewStatus.PENDING) {
+                            Text("•", color = colorScheme.onSurface.copy(alpha = 0.3f))
+                            Text(
+                                when (participant.status) {
+                                    InterviewStatus.ACCEPTED -> "✓ Diterima"
+                                    InterviewStatus.REJECTED -> "✗ Ditolak"
+                                    else -> ""
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = when (participant.status) {
+                                    InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
+                                    InterviewStatus.REJECTED -> Color(0xFFD32F2F)
+                                    else -> colorScheme.onSurface
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CircleIconButton(
+                        icon = Icons.Default.Check,
+                        background = if (participant.status == InterviewStatus.ACCEPTED) Color(0xFF4CAF50) else Color(0xFFE8F5E9),
+                        tint = if (participant.status == InterviewStatus.ACCEPTED) Color.White else Color(0xFF1B5E20),
+                        enabled = canModifyResult
+                    ) {
+                        if (canModifyResult) showAcceptDialog = true
+                    }
+
+                    CircleIconButton(
+                        icon = Icons.Default.Close,
+                        background = if (participant.status == InterviewStatus.REJECTED) Color(0xFFD32F2F) else Color(0xFFFFEBEE),
+                        tint = if (participant.status == InterviewStatus.REJECTED) Color.White else Color(0xFFB71C1C),
+                        enabled = canModifyResult
+                    ) {
+                        if (canModifyResult) showRejectDialog = true
+                    }
+
+                    CircleIconButton(
+                        icon = Icons.Default.Edit,
+                        background = Color(0xFFF3E5F5),
+                        tint = Color(0xFF4A148C),
+                        enabled = canEditSchedule
+                    ) {
+                        if (canEditSchedule) showEditDialog = true
                     }
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-
-                // Tombol Terima
-                CircleIconButton(
-                    icon = Icons.Default.Check,
-                    background = if (participant.status == InterviewStatus.ACCEPTED) Color(0xFF4CAF50) else Color(0xFFE8F5E9),
-                    tint = if (participant.status == InterviewStatus.ACCEPTED) Color.White else Color(0xFF1B5E20),
-                    enabled = !isDone
-                ) {
-                    if (!isDone) showAcceptDialog = true
-                }
-
-                // Tombol Tolak
-                CircleIconButton(
-                    icon = Icons.Default.Close,
-                    background = if (participant.status == InterviewStatus.REJECTED) Color(0xFFD32F2F) else Color(0xFFFFEBEE),
-                    tint = if (participant.status == InterviewStatus.REJECTED) Color.White else Color(0xFFB71C1C),
-                    enabled = !isDone
-                ) {
-                    if (!isDone) showRejectDialog = true
-                }
-
-                // Tampilkan Dialog
-                if (showRejectDialog) {
-                    RejectDialog(
-                        onDismiss = { showRejectDialog = false },
-                        onConfirm = { reason ->
-                            viewModel.rejectWithReason(dayIndex, participantIndex, reason)
-                            showRejectDialog = false
-                        }
-                    )
-                }
-
-                if (showAcceptDialog) {
-                    AcceptDialog(
-                        onDismiss = { showAcceptDialog = false },
-                        onConfirm = { division ->
-                            viewModel.acceptWithDivision(dayIndex, participantIndex, division)
-                            showAcceptDialog = false
-                        }
-                    )
-                }
-
-                CircleIconButton(
-                    icon = Icons.Default.Edit,
-                    background = Color(0xFFF3E5F5),
-                    tint = Color(0xFF4A148C),
-                    enabled = !isDone
-                ) {
-                    if (!isDone) showEditDialog = true
-                }
+            if (showRejectDialog) {
+                RejectDialog(
+                    onDismiss = { showRejectDialog = false },
+                    onConfirm = { reason ->
+                        viewModel.rejectWithReason(dayIndex, participantIndex, reason)
+                        showRejectDialog = false
+                    }
+                )
             }
+
+            if (showAcceptDialog) {
+                AcceptDialog(
+                    onDismiss = { showAcceptDialog = false },
+                    onConfirm = { division ->
+                        viewModel.acceptWithDivision(dayIndex, participantIndex, division)
+                        showAcceptDialog = false
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            InterviewTimerControls(
+                participant = participant,
+                isPending = isPending,
+                onStart = { viewModel.startInterview(dayIndex, participantIndex) },
+                onStop = { viewModel.stopInterview(dayIndex, participantIndex) }
+            )
         }
     }
 
@@ -688,12 +757,100 @@ fun ParticipantCard(
         EditScheduleDialog(
             participant = participant,
             day = day,
+            availableDates = viewModel.days.map { it.date },
             onDismiss = { showEditDialog = false },
             onSave = { newDate, newTime, newLocation ->
-                viewModel.updateParticipant(dayIndex, participantIndex, newDate, newTime, newLocation)
-                showEditDialog = false
+                val ok = viewModel.moveOrUpdateParticipantSchedule(dayIndex, participantIndex, newDate, newTime, newLocation)
+                if (ok) {
+                    showEditDialog = false
+                }
             }
         )
+    }
+}
+
+@Composable
+fun InterviewTimerControls(
+    participant: ParticipantData,
+    isPending: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val remainingLabel = formatRemainingTime(participant.remainingSeconds)
+    val showStartButton = isPending && !participant.hasStarted
+    val showStopButton = participant.isOngoing
+    val showAwaitingDecision = isPending && participant.hasCompleted
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            when {
+                participant.isOngoing -> {
+                    Text(
+                        text = "Sedang berlangsung",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E7D32)
+                    )
+                    Text(
+                        text = "Sisa waktu $remainingLabel",
+                        fontSize = 12.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+
+                showAwaitingDecision -> {
+                    Text(
+                        text = "Sesi wawancara selesai",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF2E7D32)
+                    )
+                    Text(
+                        text = "Silakan tentukan keputusan peserta",
+                        fontSize = 12.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+
+                else -> {
+                    Text(
+                        text = "Durasi sesi",
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${participant.durationMinutes} menit",
+                        fontSize = 12.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        when {
+            showStopButton -> {
+                OutlinedButton(
+                    onClick = onStop,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Selesai")
+                }
+            }
+
+            showStartButton -> {
+                Button(
+                    onClick = onStart,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Mulai")
+                }
+            }
+        }
     }
 }
 
@@ -760,16 +917,25 @@ fun ParticipantInfoDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScheduleDialog(
     participant: ParticipantData,
     day: DayData,
+    availableDates: List<String>,
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
     var newDate by remember { mutableStateOf(day.date) }
     var newTime by remember { mutableStateOf(participant.time) }
     var newLocation by remember { mutableStateOf(day.location) }
+
+    // Picker states & formatter
+    val context = LocalContext.current
+    val dateFormatter = remember {
+        DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -826,11 +992,56 @@ fun EditScheduleDialog(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = newDate,
-                    onValueChange = { newDate = it },
+                    onValueChange = {},
+                    readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.Event, contentDescription = "Pilih tanggal", tint = Color(0xFF1A73E8))
+                        }
+                    }
                 )
+                if (showDatePicker) {
+                    val initialMillis = runCatching {
+                        LocalDate.parse(newDate, dateFormatter)
+                            .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    }.getOrNull()
+                    val allowedSet = remember(availableDates) { availableDates.toSet() }
+                    val pickerState = rememberDatePickerState(
+                        initialSelectedDateMillis = initialMillis,
+                        selectableDates = object : androidx.compose.material3.SelectableDates {
+                            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                                val ld = Instant.ofEpochMilli(utcTimeMillis)
+                                    .atZone(ZoneId.systemDefault()).toLocalDate()
+                                val label = ld.format(dateFormatter)
+                                return allowedSet.contains(label)
+                            }
+                        }
+                    )
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    val millis = pickerState.selectedDateMillis
+                                    if (millis != null) {
+                                        val ld = Instant.ofEpochMilli(millis)
+                                            .atZone(ZoneId.systemDefault()).toLocalDate()
+                                        newDate = ld.format(dateFormatter)
+                                    }
+                                    showDatePicker = false
+                                }
+                            ) { Text("Pilih") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) { Text("Batal") }
+                        }
+                    ) {
+                        DatePicker(state = pickerState)
+                    }
+                }
                 
                 Spacer(Modifier.height(16.dp))
                 
@@ -844,10 +1055,32 @@ fun EditScheduleDialog(
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = newTime,
-                    onValueChange = { newTime = it },
+                    onValueChange = {},
+                    readOnly = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            val cal = Calendar.getInstance()
+                            val (initialHour, initialMinute) = runCatching {
+                                val parts = newTime.replace(" WIB", "").split(".")
+                                parts[0].toInt() to parts[1].toInt()
+                            }.getOrElse { cal.get(Calendar.HOUR_OF_DAY) to cal.get(Calendar.MINUTE) }
+
+                            TimePickerDialog(
+                                context,
+                                { _, hour: Int, minute: Int ->
+                                    newTime = String.format(Locale.getDefault(), "%02d.%02d WIB", hour, minute)
+                                },
+                                initialHour,
+                                initialMinute,
+                                true
+                            ).show()
+                        }) {
+                            Icon(Icons.Default.Schedule, contentDescription = "Pilih waktu", tint = Color(0xFF1A73E8))
+                        }
+                    }
                 )
                 
                 Spacer(Modifier.height(16.dp))
@@ -1238,6 +1471,35 @@ fun AcceptDialog(
                 }
             }
         }
+    }
+}
+
+private fun formatRemainingTime(totalSeconds: Int): String {
+    val clamped = totalSeconds.coerceAtLeast(0)
+    val minutes = clamped / 60
+    val seconds = clamped % 60
+    return "%02d:%02d".format(minutes, seconds)
+}
+
+private fun triggerWarningVibration(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val manager = context.getSystemService(VibratorManager::class.java)
+        manager?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Vibrator::class.java)
+    }
+
+    vibrator ?: return
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val pattern = longArrayOf(0, 400, 120, 400)
+        val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE)
+        val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
+        vibrator.vibrate(effect)
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(600L)
     }
 }
 
