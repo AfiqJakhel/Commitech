@@ -14,11 +14,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import com.example.commitech.R
+import com.example.commitech.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    onSplashFinished: () -> Unit
+    authViewModel: AuthViewModel,
+    onNavigateToHome: () -> Unit,
+    onNavigateToLanding: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
 
@@ -29,8 +32,8 @@ fun SplashScreen(
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(1000)
-        onSplashFinished()
+        delay(1500) // Delay untuk animasi splash
+        onNavigateToLanding() // Selalu ke Landing, tidak auto-login
     }
 
     // Tampilan splash

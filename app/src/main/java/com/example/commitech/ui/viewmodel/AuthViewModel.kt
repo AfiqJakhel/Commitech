@@ -1,6 +1,7 @@
 package com.example.commitech.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.commitech.data.model.ErrorResponse
 import com.example.commitech.data.model.User
@@ -21,13 +22,18 @@ data class AuthState(
     val error: String? = null
 )
 
-class AuthViewModel : ViewModel() {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
     
     private val repository = AuthRepository()
     private val gson = Gson()
     
     private val _authState = MutableStateFlow(AuthState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    
+    init {
+        // Tidak auto-login, user harus login manual setiap kali
+        _authState.value = AuthState(isLoading = false)
+    }
     
     /**
      * Parse error response from server
@@ -80,11 +86,14 @@ class AuthViewModel : ViewModel() {
                 
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!
+                    val token = authResponse.data.token
+
+                    
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isAuthenticated = true,
                         user = authResponse.data.user,
-                        token = authResponse.data.token,
+                        token = token,
                         error = null
                     )
                 } else {
@@ -130,11 +139,14 @@ class AuthViewModel : ViewModel() {
                 
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!
+                    val token = authResponse.data.token
+
+                    
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         isAuthenticated = true,
                         user = authResponse.data.user,
-                        token = authResponse.data.token,
+                        token = token,
                         error = null
                     )
                 } else {
@@ -172,16 +184,17 @@ class AuthViewModel : ViewModel() {
     }
     
     fun logout() {
+        val currentToken = _authState.value.token
+        _authState.value = AuthState()
+        
+        // Panggil API logout di background
         viewModelScope.launch {
             try {
-                val token = _authState.value.token
-                if (token != null) {
-                    repository.logout(token)
+                if (currentToken != null) {
+                    repository.logout(currentToken)
                 }
             } catch (e: Exception) {
-                // Handle error silently
-            } finally {
-                _authState.value = AuthState()
+                // Ignore error
             }
         }
     }

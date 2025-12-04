@@ -112,7 +112,13 @@ fun AppNavGraph(
             exitTransition = { powerPointFadeExit() }
         ) {
             SplashScreen(
-                onSplashFinished = {
+                authViewModel = authViewModel,
+                onNavigateToHome = {
+                    navController.navigate("home") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                },
+                onNavigateToLanding = {
                     navController.navigate("landing") {
                         popUpTo("splash") { inclusive = true }
                     }
@@ -218,7 +224,11 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) {
             val viewModel: DataPendaftarViewModel = viewModel()
-            DataPendaftarScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
+            DataPendaftarScreen(
+                viewModel = viewModel,
+                authViewModel = authViewModel,
+                onBackClick = { navController.popBackStack() }
+            )
         }
 
         // 📋 Seleksi Berkas

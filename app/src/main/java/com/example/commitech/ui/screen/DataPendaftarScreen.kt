@@ -1,5 +1,9 @@
 package com.example.commitech.ui.screen
 
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
@@ -27,10 +31,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,9 +44,11 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,17 +67,101 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.commitech.ui.components.CircleIconButton
 import com.example.commitech.ui.theme.LocalTheme
+import com.example.commitech.ui.viewmodel.AuthViewModel
 import com.example.commitech.ui.viewmodel.DataPendaftarViewModel
 import com.example.commitech.ui.viewmodel.Pendaftar
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DataPendaftarScreen(
     viewModel: DataPendaftarViewModel,
+    authViewModel: AuthViewModel,
     onBackClick: () -> Unit
 ) {
     val customColors = LocalTheme.current
     val pendaftarState by viewModel.pendaftarList.collectAsState()
+    val state by viewModel.state.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
+    val context = LocalContext.current
+    
+    // Load data on start
+    LaunchedEffect(Unit) {
+        viewModel.loadPendaftarList(authState.token)
+    }
+    
+    // File picker for Excel
+    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+    var filePickerError by remember { mutableStateOf<String?>(null) }
+    
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        filePickerError = null
+        uri?.let {
+            selectedFileUri = it
+            // Convert URI to File and upload
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                    ?: throw Exception("Tidak dapat membaca file. Pastikan file Excel valid.")
+                
+                // Get file name from URI - try multiple methods
+                var fileName = uri.lastPathSegment ?: "import_${System.currentTimeMillis()}.xlsx"
+                
+                // Try to get file name from content resolver
+                try {
+                    val cursor = context.contentResolver.query(
+                        uri, arrayOf(OpenableColumns.DISPLAY_NAME),
+                        null, null, null
+                    )
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex >= 0) {
+                                fileName = it.getString(nameIndex) ?: fileName
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Fallback to default name
+                }
+                
+                // Ensure file has .xlsx or .xls extension
+                if (!fileName.endsWith(".xlsx", ignoreCase = true) && 
+                    !fileName.endsWith(".xls", ignoreCase = true)) {
+                    fileName += ".xlsx"
+                }
+                
+                val file = File(context.cacheDir, fileName)
+                val outputStream = FileOutputStream(file)
+                inputStream.copyTo(outputStream)
+                inputStream.close()
+                outputStream.close()
+                
+                // Verify file exists and has content
+                if (!file.exists() || file.length() == 0L) {
+                    throw Exception("File kosong atau tidak valid. Pastikan file Excel memiliki data.")
+                }
+                
+                viewModel.importExcel(authState.token, file)
+            } catch (e: Exception) {
+                filePickerError = "Error membaca file: ${e.message}"
+                viewModel.clearError()
+            }
+        }
+    }
+    
+    // Launch file picker with Excel MIME types
+    fun launchFilePicker() {
+        try {
+            // Try to launch with Excel-specific MIME types first
+            filePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        } catch (e: Exception) {
+            // Fallback to all files if specific MIME type fails
+            filePickerLauncher.launch("*/*")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -107,23 +200,130 @@ fun DataPendaftarScreen(
 
             // Tombol Import Excel
             Button(
-                onClick = { /* Aksi Import Excel */ },
+                onClick = { 
+                    launchFilePicker()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2196F3)
+                    containerColor = Color(0xFF2196F3),
+                    disabledContainerColor = Color(0xFFBDBDBD)
                 ),
+                enabled = !state.isLoading,
                 shape = RoundedCornerShape(8.dp)
             ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Text(
-                    "Import Excel",
+                    if (state.isLoading) "Mengimpor..." else "Import Excel",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+            
+            // File Picker Error
+            filePickerError?.let { error ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Error File Picker:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFC62828)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = error,
+                            fontSize = 14.sp,
+                            color = Color(0xFFC62828)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            // Error/Success Message
+            state.error?.let { error ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier.padding(12.dp),
+                        color = Color(0xFFC62828),
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            state.importMessage?.let { message ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(12.dp),
+                        color = Color(0xFF2E7D32),
+                        fontSize = 14.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            // Info Card - Cara Import Excel
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = Color(0xFF1976D2),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Cara Import Excel:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1976D2)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "1. Kirim file Excel dari komputer ke emulator:\n" +
+                               "   • Drag & drop file ke emulator, ATAU\n" +
+                               "   • Gunakan ADB: adb push file.xlsx /sdcard/Download/\n" +
+                               "2. Klik tombol 'Import Excel' di atas\n" +
+                               "3. Pilih file Excel dari storage emulator",
+                        fontSize = 11.sp,
+                        color = Color(0xFF1565C0),
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Card Jumlah Pendaftar dengan Gradient
             Card(
@@ -168,6 +368,35 @@ fun DataPendaftarScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // Loading indicator saat reload setelah import
+            if (state.isReloading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color(0xFF2196F3),
+                            strokeWidth = 3.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Memuat data...",
+                            fontSize = 14.sp,
+                            color = Color(0xFF2196F3),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // LazyColumn (Daftar Pendaftar)
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -178,18 +407,32 @@ fun DataPendaftarScreen(
                         index = index + 1,
                         pendaftar = pendaftar,
                         onDelete = { pendaftarToDelete ->
-                            viewModel.deletePendaftar(pendaftarToDelete)
+                            viewModel.deletePendaftar(authState.token, pendaftarToDelete)
                         },
                         onUpdate = { pendaftarToUpdate ->
                             viewModel.updatePendaftar(pendaftarToUpdate)
                         },
                         onEdit = { pendaftarBaru ->
-                            viewModel.editPendaftar(pendaftarBaru)
+                            viewModel.editPendaftar(authState.token, pendaftarBaru)
                         }
                     )
                 }
             }
         }
+    }
+    
+    // Error Dialog
+    state.error?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearError() },
+            title = { Text("Error") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearError() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 
