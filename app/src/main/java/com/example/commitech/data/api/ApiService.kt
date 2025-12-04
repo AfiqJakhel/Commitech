@@ -7,6 +7,8 @@ import com.example.commitech.data.model.PendaftarListResponse
 import com.example.commitech.data.model.PendaftarSingleResponse
 import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.ImportExcelResponse
+import com.example.commitech.data.model.HasilWawancaraRequest
+import com.example.commitech.data.model.HasilWawancaraSingleResponse
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -75,4 +77,31 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Part file: MultipartBody.Part
     ): Response<ImportExcelResponse>
+    
+    // ==========================================
+    // API Hasil Wawancara (Modul 4 - Fitur 16-17)
+    // ==========================================
+    
+    /**
+     * Fitur 16: Input hasil wawancara (Create)
+     * 
+     * Endpoint: POST /api/wawancara/hasil
+     * 
+     * Menyimpan hasil wawancara untuk seorang peserta.
+     * 
+     * @param token Token autentikasi (dengan prefix "Bearer")
+     * @param request Request body berisi data hasil wawancara
+     * @return Response yang berisi data hasil wawancara yang baru dibuat
+     * 
+     * Status Code:
+     * - 201: Created - Hasil wawancara berhasil disimpan
+     * - 400: Bad Request - Hasil wawancara untuk peserta ini sudah ada
+     * - 422: Unprocessable Entity - Validation error
+     * - 401: Unauthorized - Token invalid/expired
+     */
+    @POST("api/wawancara/hasil")
+    suspend fun simpanHasilWawancara(
+        @Header("Authorization") token: String,
+        @Body request: HasilWawancaraRequest
+    ): Response<HasilWawancaraSingleResponse>
 }

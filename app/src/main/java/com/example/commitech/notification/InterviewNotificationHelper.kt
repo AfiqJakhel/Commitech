@@ -70,11 +70,11 @@ object InterviewNotificationHelper {
     ) {
         val builder = NotificationCompat.Builder(context, WARNING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_warning)
-            .setContentTitle(context.getString(R.string.notification_warning_title, participantName))
+            .setContentTitle(context.getString(R.string.notification_warning_title))
             .setContentText(
                 context.getString(
                     R.string.notification_warning_body,
-                    scheduleLabel
+                    participantName
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)

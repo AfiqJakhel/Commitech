@@ -253,6 +253,7 @@ fun AppNavGraph(
         ) {
             SeleksiWawancaraScreen(
                 viewModel = seleksiWawancaraViewModel,
+                authViewModel = authViewModel,  // Tambahkan authViewModel untuk token API call (Fitur 16)
                 onBackClick = { navController.popBackStack() }
             )
         }

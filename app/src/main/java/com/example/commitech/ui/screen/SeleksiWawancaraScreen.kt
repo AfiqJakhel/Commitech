@@ -64,6 +64,11 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,12 +90,14 @@ import androidx.compose.ui.window.Dialog
 import com.example.commitech.notification.InterviewAlarmScheduler
 import com.example.commitech.notification.InterviewNotificationHelper
 import com.example.commitech.ui.components.CircleIconButton
+import com.example.commitech.ui.viewmodel.AuthViewModel
 import com.example.commitech.ui.viewmodel.DayData
 import com.example.commitech.ui.viewmodel.InterviewEvent
 import com.example.commitech.ui.viewmodel.InterviewStatus
 import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 import kotlinx.coroutines.flow.collect
+import androidx.compose.runtime.collectAsState
 import android.app.TimePickerDialog
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.DatePicker
@@ -104,10 +111,25 @@ import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
+/**
+ * Screen untuk Seleksi Wawancara
+ * 
+ * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
+ * 
+ * Screen ini menampilkan:
+ * - Jadwal wawancara per hari
+ * - Status hasil wawancara
+ * - Fitur untuk Accept/Reject peserta dengan integrasi backend API
+ * 
+ * @param viewModel ViewModel untuk mengelola state dan logika seleksi wawancara
+ * @param authViewModel ViewModel untuk autentikasi (diperlukan untuk token API)
+ * @param onBackClick Callback saat tombol back ditekan
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeleksiWawancaraScreen(
     viewModel: SeleksiWawancaraViewModel,
+    authViewModel: AuthViewModel,
     onBackClick: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -116,9 +138,41 @@ fun SeleksiWawancaraScreen(
     val colorScheme = MaterialTheme.colorScheme
     val totalPeserta = viewModel.totalParticipants()
     val context = LocalContext.current
+    
+    // Collect auth state untuk token
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Collect state untuk hasil wawancara API call
+    val isSavingHasil by viewModel.isSavingHasil.collectAsState()
+    val saveHasilError by viewModel.saveHasilError.collectAsState()
+    val saveHasilSuccess by viewModel.saveHasilSuccess.collectAsState()
+    
+    // Collect state untuk loading jadwal dari database
+    val isLoadingJadwal by viewModel.isLoadingJadwal.collectAsState()
+    val jadwalError by viewModel.jadwalError.collectAsState()
+    
+    // Snackbar host state untuk success message
+    val snackbarHostState = remember { SnackbarHostState() }
 
+    // Load jadwal wawancara dari database saat pertama kali dibuka
     LaunchedEffect(Unit) {
         InterviewNotificationHelper.ensureChannels(context)
+        
+        // Load jadwal dari database jika token tersedia
+        authState.token?.let { token ->
+            if (viewModel.days.isEmpty()) {
+                viewModel.loadJadwalWawancaraFromDatabase(token)
+            }
+        }
+    }
+    
+    // Reload jadwal jika token berubah (misalnya setelah login)
+    LaunchedEffect(authState.token) {
+        authState.token?.let { token ->
+            if (viewModel.days.isEmpty()) {
+                viewModel.loadJadwalWawancaraFromDatabase(token)
+            }
+        }
     }
 
     LaunchedEffect(viewModel.days) {
@@ -137,10 +191,18 @@ fun SeleksiWawancaraScreen(
             when (event) {
                 is InterviewEvent.FiveMinuteWarning -> {
                     triggerWarningVibration(context)
+                    
+                    // Tampilkan notifikasi di drawer
                     InterviewNotificationHelper.showWarningNotification(
                         context = context,
                         participantName = event.participantName,
                         scheduleLabel = event.scheduleLabel
+                    )
+                    
+                    // Tampilkan Snackbar di layar
+                    snackbarHostState.showSnackbar(
+                        message = "Wawancara ${event.participantName} tersisa 5 menit lagi",
+                        duration = SnackbarDuration.Long
                     )
                 }
 
@@ -155,7 +217,24 @@ fun SeleksiWawancaraScreen(
         }
     }
     
+    // Success snackbar handler
+    LaunchedEffect(saveHasilSuccess) {
+        saveHasilSuccess?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearSaveHasilSuccess()
+        }
+    }
+    
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(16.dp)
+            )
+        },
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -182,11 +261,14 @@ fun SeleksiWawancaraScreen(
         },
         containerColor = colorScheme.background
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Header Card dengan Total Peserta
             Card(
                 modifier = Modifier
@@ -283,6 +365,7 @@ fun SeleksiWawancaraScreen(
             when (selectedTab) {
                 0 -> WawancaraJadwalContent(
                     viewModel = viewModel,
+                    authState = authState,
                     modifier = Modifier.weight(1f)
                 )
                 1 -> WawancaraStatusContent(
@@ -290,13 +373,90 @@ fun SeleksiWawancaraScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
+            }
+            
+            // Loading indicator saat menyimpan hasil wawancara
+            if (isSavingHasil) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = colorScheme.primary
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "Menyimpan hasil wawancara...",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Error dialog
+            saveHasilError?.let { error ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearSaveHasilError() },
+                    title = {
+                        Text(
+                            text = "Error",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = error,
+                            fontSize = 14.sp
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = { viewModel.clearSaveHasilError() }
+                        ) {
+                            Text(
+                                text = "OK",
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     }
 }
 
+/**
+ * Content untuk tab Jadwal Wawancara
+ * 
+ * Menampilkan daftar jadwal wawancara per hari dalam bentuk expandable card
+ * 
+ * @param viewModel ViewModel untuk state management
+ * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
+ * @param modifier Modifier untuk styling
+ */
 @Composable
 fun WawancaraJadwalContent(
     viewModel: SeleksiWawancaraViewModel,
+    authState: com.example.commitech.ui.viewmodel.AuthState,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -306,7 +466,11 @@ fun WawancaraJadwalContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(viewModel.days.size) { index ->
-            ExpandableDayCard(viewModel, index)
+            ExpandableDayCard(
+                viewModel = viewModel,
+                dayIndex = index,
+                authState = authState
+            )
         }
     }
 }
@@ -453,8 +617,24 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
     }
 }
 
+/**
+ * Expandable card untuk menampilkan jadwal wawancara per hari
+ * 
+ * Card ini bisa di-expand untuk melihat daftar peserta yang akan diwawancara
+ * 
+ * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
+ * - Menggunakan authState untuk mendapatkan token untuk API call
+ * 
+ * @param viewModel ViewModel untuk state management
+ * @param dayIndex Index hari dalam jadwal
+ * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
+ */
 @Composable
-fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
+fun ExpandableDayCard(
+    viewModel: SeleksiWawancaraViewModel,
+    dayIndex: Int,
+    authState: com.example.commitech.ui.viewmodel.AuthState
+) {
     val day = viewModel.days[dayIndex]
     var expanded by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
@@ -555,7 +735,8 @@ fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
                                 day = day,
                                 dayIndex = dayIndex,
                                 participantIndex = pIndex,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                token = authState.token
                             )
                             if (pIndex != day.participants.lastIndex) {
                                 HorizontalDivider(thickness = 1.dp, color = Color(0xFFEBEBEB))
@@ -568,13 +749,34 @@ fun ExpandableDayCard(viewModel: SeleksiWawancaraViewModel, dayIndex: Int) {
     }
 }
 
+/**
+ * Card untuk menampilkan informasi peserta dalam jadwal wawancara
+ * 
+ * Card ini menampilkan:
+ * - Nama peserta
+ * - Waktu wawancara
+ * - Status hasil wawancara
+ * - Tombol untuk Accept/Reject peserta
+ * - Timer wawancara
+ * 
+ * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
+ * - Integrasi dengan backend API saat Accept/Reject peserta
+ * 
+ * @param participant Data peserta
+ * @param day Data hari jadwal
+ * @param dayIndex Index hari
+ * @param participantIndex Index peserta dalam hari tersebut
+ * @param viewModel ViewModel untuk state management
+ * @param token Token autentikasi untuk API call (nullable, akan error jika null)
+ */
 @Composable
 fun ParticipantCard(
     participant: ParticipantData,
     day: DayData,
     dayIndex: Int,
     participantIndex: Int,
-    viewModel: SeleksiWawancaraViewModel
+    viewModel: SeleksiWawancaraViewModel,
+    token: String?
 ) {
     var showInfoDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -719,7 +921,13 @@ fun ParticipantCard(
                 RejectDialog(
                     onDismiss = { showRejectDialog = false },
                     onConfirm = { reason ->
-                        viewModel.rejectWithReason(dayIndex, participantIndex, reason)
+                        // Pass token untuk API call (Fitur 16: Input Hasil Wawancara)
+                        viewModel.rejectWithReason(
+                            dayIndex = dayIndex,
+                            index = participantIndex,
+                            reason = reason,
+                            token = token  // Token dari authState
+                        )
                         showRejectDialog = false
                     }
                 )
@@ -729,7 +937,13 @@ fun ParticipantCard(
                 AcceptDialog(
                     onDismiss = { showAcceptDialog = false },
                     onConfirm = { division ->
-                        viewModel.acceptWithDivision(dayIndex, participantIndex, division)
+                        // Pass token untuk API call (Fitur 16: Input Hasil Wawancara)
+                        viewModel.acceptWithDivision(
+                            dayIndex = dayIndex,
+                            index = participantIndex,
+                            division = division,
+                            token = token  // Token dari authState
+                        )
                         showAcceptDialog = false
                     }
                 )

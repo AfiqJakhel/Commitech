@@ -10,8 +10,8 @@
     <!-- Notification copy -->
     <string name="notification_reminder_title">Pengingat Wawancara</string>
     <string name="notification_reminder_body">%1$s dijadwalkan pada %2$s</string>
-    <string name="notification_warning_title">5 menit tersisa untuk %1$s</string>
-    <string name="notification_warning_body">%1$s</string>
+    <string name="notification_warning_title">Wawancara tersisa 5 menit lagi</string>
+    <string name="notification_warning_body">Wawancara %1$s tersisa 5 menit lagi</string>
     <string name="notification_complete_title">Wawancara %1$s selesai</string>
     <string name="notification_complete_body">%1$s</string>
 </resources>
