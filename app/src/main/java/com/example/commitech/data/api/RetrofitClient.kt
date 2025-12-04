@@ -2,6 +2,7 @@ package com.example.commitech.data.api
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -26,9 +27,18 @@ object RetrofitClient {
     
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        // Connection timeout: waktu maksimal untuk establish connection
+        .connectTimeout(15, TimeUnit.SECONDS)
+        // Read timeout: waktu maksimal untuk membaca response (510ms response time + buffer)
+        .readTimeout(60, TimeUnit.SECONDS)
+        // Write timeout: waktu maksimal untuk write request
         .writeTimeout(30, TimeUnit.SECONDS)
+        // Call timeout: total waktu maksimal untuk satu request (lebih dari read timeout)
+        .callTimeout(90, TimeUnit.SECONDS)
+        // Connection pooling untuk reuse connection
+        .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES))
+        // Retry on connection failure
+        .retryOnConnectionFailure(true)
         .build()
     
     private val retrofit = Retrofit.Builder()

@@ -350,7 +350,7 @@ fun DataPendaftarScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "${pendaftarState.size}",
+                            text = "${state.totalItems}",
                             fontSize = 40.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1A1A40)
@@ -403,8 +403,10 @@ fun DataPendaftarScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 itemsIndexed(pendaftarState) { index, pendaftar ->
+                    // Calculate actual index with pagination
+                    val actualIndex = ((state.currentPage - 1) * 20) + index + 1
                     PendaftarItem(
-                        index = index + 1,
+                        index = actualIndex,
                         pendaftar = pendaftar,
                         onDelete = { pendaftarToDelete ->
                             viewModel.deletePendaftar(authState.token, pendaftarToDelete)
@@ -416,6 +418,110 @@ fun DataPendaftarScreen(
                             viewModel.editPendaftar(authState.token, pendaftarBaru)
                         }
                     )
+                }
+                
+                // Pagination Info & Controls
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Pagination Info
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Halaman ${state.currentPage} dari ${state.totalPages}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF424242)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Info peserta di halaman ini (di tengah)
+                            val startItem = if (pendaftarState.isNotEmpty()) {
+                                ((state.currentPage - 1) * 20) + 1
+                            } else {
+                                0
+                            }
+                            val endItem = if (pendaftarState.isNotEmpty()) {
+                                ((state.currentPage - 1) * 20) + pendaftarState.size
+                            } else {
+                                0
+                            }
+                            
+                            if (startItem > 0 && endItem > 0) {
+                                Text(
+                                    text = "Menampilkan $startItem-$endItem dari ${state.totalItems}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF757575),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Pagination Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Previous Button
+                                Button(
+                                    onClick = {
+                                        if (state.currentPage > 1) {
+                                            viewModel.loadPendaftarList(authState.token, state.currentPage - 1, append = false)
+                                        }
+                                    },
+                                    enabled = state.currentPage > 1 && !state.isLoading && !state.isLoadingMore,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2196F3),
+                                        disabledContainerColor = Color(0xFFBDBDBD)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "Sebelumnya",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
+                                
+                                // Next Button
+                                Button(
+                                    onClick = {
+                                        if (state.hasMore) {
+                                            viewModel.loadPendaftarList(authState.token, state.currentPage + 1, append = false)
+                                        }
+                                    },
+                                    enabled = state.hasMore && !state.isLoading && !state.isLoadingMore,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2196F3),
+                                        disabledContainerColor = Color(0xFFBDBDBD)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "Selanjutnya",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }

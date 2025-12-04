@@ -64,8 +64,13 @@ fun Pendaftar.toPendaftarResponse(): PendaftarResponse {
 data class DataPendaftarState(
     val isLoading: Boolean = false,
     val isReloading: Boolean = false, // Loading untuk reload setelah import
+    val isLoadingMore: Boolean = false, // Loading untuk load more (pagination)
     val error: String? = null,
-    val importMessage: String? = null
+    val importMessage: String? = null,
+    val currentPage: Int = 1,
+    val totalPages: Int = 1,
+    val totalItems: Int = 0,
+    val hasMore: Boolean = false
 )
 
 class DataPendaftarViewModel : ViewModel() {
@@ -78,7 +83,7 @@ class DataPendaftarViewModel : ViewModel() {
     private val _state = MutableStateFlow(DataPendaftarState())
     val state: StateFlow<DataPendaftarState> = _state.asStateFlow()
 
-    fun loadPendaftarList(token: String?) {
+    fun loadPendaftarList(token: String?, page: Int = 1, append: Boolean = false) {
         if (token == null) {
             _state.value = _state.value.copy(error = "Token tidak tersedia. Silakan login ulang.")
             return
@@ -88,57 +93,111 @@ class DataPendaftarViewModel : ViewModel() {
             // Jangan set loading jika ini reload setelah import (untuk avoid double loading)
             val isReloadAfterImport = _state.value.importMessage != null
             
-            if (!isReloadAfterImport) {
+            if (!isReloadAfterImport && !append) {
                 _state.value = _state.value.copy(isLoading = true, error = null)
+            } else if (append) {
+                _state.value = _state.value.copy(isLoadingMore = true, error = null)
             }
             
-            try {
-                val response = repository.getPesertaList(token)
+            // Retry mechanism untuk handle intermittent connection issues
+            // Response time backend ~510ms, jadi retry dengan delay pendek
+            var success = false
+            var lastError: String? = null
+            val maxRetries = 3 // Coba maksimal 3 kali
+            
+            repeat(maxRetries) { attempt ->
+                if (success) return@repeat
                 
-                if (response.isSuccessful && response.body() != null) {
-                    val pendaftarResponses = response.body()!!.data
-                    _pendaftarList.value = pendaftarResponses.map { it.toPendaftar() }
-                    _state.value = _state.value.copy(isLoading = false, error = null)
-                } else {
-                    val errorBody = try {
-                        response.errorBody()?.string()
-                    } catch (e: IOException) {
-                        null
-                    }
-                    // Jangan override import message jika ini reload setelah import
-                    if (isReloadAfterImport) {
-                        // Silent fail - hanya log, jangan tampilkan error
-                        android.util.Log.w("DataPendaftarViewModel", "Gagal reload list setelah import: ${errorBody ?: response.code()}")
-                    } else {
+                try {
+                    val response = repository.getPesertaList(token, page, 20)
+                    
+                    if (response.isSuccessful && response.body() != null) {
+                        val body = response.body()!!
+                        val pendaftarResponses = body.data
+                        val pagination = body.pagination
+                        
+                        // Update pagination info
+                        val currentPage = pagination?.currentPage ?: page
+                        val totalPages = pagination?.lastPage ?: 1
+                        val totalItems = pagination?.total ?: 0
+                        val hasMore = pagination?.hasMore ?: false
+                        
+                        // Append atau replace list
+                        if (append) {
+                            _pendaftarList.value = _pendaftarList.value + pendaftarResponses.map { it.toPendaftar() }
+                        } else {
+                            _pendaftarList.value = pendaftarResponses.map { it.toPendaftar() }
+                        }
+                        
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            error = errorBody ?: "Gagal memuat data. Status: ${response.code()}"
+                            isLoadingMore = false,
+                            error = null,
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            totalItems = totalItems,
+                            hasMore = hasMore
                         )
+                        success = true
+                        return@repeat // Success, exit retry loop
+                    } else {
+                        val errorBody = try {
+                            response.errorBody()?.string()
+                        } catch (e: IOException) {
+                            null
+                        }
+                        lastError = errorBody ?: "Gagal memuat data. Status: ${response.code()}"
+                        
+                        // Jika HTTP error (4xx/5xx), tidak perlu retry
+                        // Hanya retry untuk network errors
+                        if (response.code() in 400..599) {
+                            success = false
+                            return@repeat
+                        }
+                    }
+                } catch (e: IOException) {
+                    // Network error - bisa retry
+                    lastError = "Tidak dapat terhubung ke server. Pastikan server berjalan."
+                    
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                    if (attempt < maxRetries - 1) {
+                        // Exponential backoff: 500ms, 1000ms, 2000ms
+                        val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
+                        kotlinx.coroutines.delay(delayMs.toLong())
+                    }
+                } catch (e: Exception) {
+                    // Unexpected error
+                    lastError = "Terjadi kesalahan: ${e.message ?: "Unknown error"}"
+                    
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                    if (attempt < maxRetries - 1) {
+                        val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
+                        kotlinx.coroutines.delay(delayMs.toLong())
                     }
                 }
-            } catch (e: IOException) {
+            }
+            
+            // Jika semua retry gagal, tampilkan error
+            if (!success && lastError != null) {
                 // Jangan override import message jika ini reload setelah import
                 if (isReloadAfterImport) {
                     // Silent fail - hanya log, jangan tampilkan error
-                    android.util.Log.w("DataPendaftarViewModel", "Gagal reload list setelah import: ${e.message}")
+                    android.util.Log.w("DataPendaftarViewModel", "Gagal reload list setelah import setelah $maxRetries attempts: $lastError")
                 } else {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "Tidak dapat terhubung ke server. Pastikan server berjalan."
-                    )
-                }
-            } catch (e: Exception) {
-                // Jangan override import message jika ini reload setelah import
-                if (isReloadAfterImport) {
-                    // Silent fail - hanya log, jangan tampilkan error
-                    android.util.Log.w("DataPendaftarViewModel", "Gagal reload list setelah import: ${e.message}")
-                } else {
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        error = "Terjadi kesalahan: ${e.message ?: "Unknown error"}"
+                        isLoadingMore = false,
+                        error = lastError
                     )
                 }
             }
+        }
+    }
+    
+    fun loadNextPage(token: String?) {
+        val currentState = _state.value
+        if (currentState.hasMore && !currentState.isLoadingMore && !currentState.isLoading) {
+            loadPendaftarList(token, currentState.currentPage + 1, append = true)
         }
     }
 
@@ -291,10 +350,22 @@ class DataPendaftarViewModel : ViewModel() {
                 if (success) return@repeat
                 
                 try {
-                    val response = repository.getPesertaList(token)
+                    val response = repository.getPesertaList(token, 1, 20)
                     if (response.isSuccessful && response.body() != null) {
-                        val pendaftarResponses = response.body()!!.data
+                        val body = response.body()!!
+                        val pendaftarResponses = body.data
+                        val pagination = body.pagination
+                        
                         _pendaftarList.value = pendaftarResponses.map { it.toPendaftar() }
+                        
+                        // Update pagination info
+                        _state.value = _state.value.copy(
+                            currentPage = pagination?.currentPage ?: 1,
+                            totalPages = pagination?.lastPage ?: 1,
+                            totalItems = pagination?.total ?: 0,
+                            hasMore = pagination?.hasMore ?: false
+                        )
+                        
                         success = true
                         return@repeat // Success, exit retry loop
                     }

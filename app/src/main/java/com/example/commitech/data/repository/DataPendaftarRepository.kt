@@ -15,8 +15,12 @@ class DataPendaftarRepository {
     
     private val apiService = RetrofitClient.apiService
     
-    suspend fun getPesertaList(token: String): Response<PendaftarListResponse> {
-        return apiService.getPesertaList("Bearer $token")
+    suspend fun getPesertaList(
+        token: String,
+        page: Int = 1,
+        perPage: Int = 20
+    ): Response<PendaftarListResponse> {
+        return apiService.getPesertaList("Bearer $token", page, perPage)
     }
     
     suspend fun getPesertaById(token: String, id: Int): Response<PendaftarSingleResponse> {

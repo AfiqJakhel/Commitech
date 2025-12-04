@@ -87,7 +87,26 @@ data class PendaftarListResponse(
     @SerializedName("message")
     val message: String,
     @SerializedName("data")
-    val data: List<PendaftarResponse>
+    val data: List<PendaftarResponse>,
+    @SerializedName("pagination")
+    val pagination: PaginationInfo?
+)
+
+data class PaginationInfo(
+    @SerializedName("current_page")
+    val currentPage: Int,
+    @SerializedName("last_page")
+    val lastPage: Int,
+    @SerializedName("per_page")
+    val perPage: Int,
+    @SerializedName("total")
+    val total: Int,
+    @SerializedName("from")
+    val from: Int?,
+    @SerializedName("to")
+    val to: Int?,
+    @SerializedName("has_more")
+    val hasMore: Boolean
 )
 
 data class PendaftarSingleResponse(
