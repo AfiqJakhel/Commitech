@@ -54,6 +54,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,10 +87,24 @@ fun DataPendaftarScreen(
     val state by viewModel.state.collectAsState()
     val authState by authViewModel.authState.collectAsState()
     val context = LocalContext.current
+    var showImportGuide by rememberSaveable { mutableStateOf(true) }
     
     // Load data on start
     LaunchedEffect(Unit) {
         viewModel.loadPendaftarList(authState.token)
+    }
+
+    // Sembunyikan kartu panduan setelah ada import sukses atau data sudah terisi
+    LaunchedEffect(state.importMessage) {
+        if (state.importMessage != null) {
+            showImportGuide = false
+        }
+    }
+
+    LaunchedEffect(state.totalItems) {
+        if (state.totalItems > 0) {
+            showImportGuide = false
+        }
     }
     
     // File picker for Excel
@@ -372,42 +387,44 @@ fun DataPendaftarScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
             
-            // Info Card - Cara Import Excel
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color(0xFF1976D2),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+            // Info Card - Cara Import Excel (hanya tampil jika belum ada data/import)
+            if (showImportGuide) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Cara Import Excel:",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1976D2)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Cara Import Excel:",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1976D2)
+                            text = "1. Kirim file Excel dari komputer ke emulator:\n" +
+                                   "   • Drag & drop file ke emulator, ATAU\n" +
+                                   "   • Gunakan ADB: adb push file.xlsx /sdcard/Download/\n" +
+                                   "2. Klik tombol 'Import Excel' di atas\n" +
+                                   "3. Pilih file Excel dari storage emulator",
+                            fontSize = 11.sp,
+                            color = Color(0xFF1565C0),
+                            lineHeight = 16.sp
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "1. Kirim file Excel dari komputer ke emulator:\n" +
-                               "   • Drag & drop file ke emulator, ATAU\n" +
-                               "   • Gunakan ADB: adb push file.xlsx /sdcard/Download/\n" +
-                               "2. Klik tombol 'Import Excel' di atas\n" +
-                               "3. Pilih file Excel dari storage emulator",
-                        fontSize = 11.sp,
-                        color = Color(0xFF1565C0),
-                        lineHeight = 16.sp
-                    )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Card Jumlah Pendaftar dengan Gradient
             Card(
@@ -1212,25 +1229,26 @@ fun DetailRowPendaftar(
     label: String,
     value: String
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(vertical = 8.dp)
     ) {
         Text(
             text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color(0xFF1A1A40),
-            modifier = Modifier.weight(1f)
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
             fontSize = 14.sp,
             fontWeight = FontWeight.Normal,
             color = Color(0xFF1A1A40),
-            modifier = Modifier.weight(1f)
+            lineHeight = 18.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Justify,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
