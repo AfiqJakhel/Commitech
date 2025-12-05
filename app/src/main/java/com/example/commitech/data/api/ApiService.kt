@@ -9,6 +9,8 @@ import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
+import com.example.commitech.data.model.SessionValidationResponse
+import com.example.commitech.data.model.ActiveSessionsResponse
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -104,4 +106,79 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
+    
+    // ==========================================
+    // API Session Management (HYBRID APPROACH)
+    // ==========================================
+    
+    /**
+     * Check session validity
+     * 
+     * CRITICAL: Core dari hybrid session management
+     * - Validate token di server
+     * - Check expiry time
+     * - Return user data jika valid
+     * 
+     * Endpoint: GET /api/session/check
+     * 
+     * @param token Session token (dengan prefix "Bearer")
+     * @return SessionValidationResponse
+     * 
+     * Response:
+     * {
+     *   "isValid": true,
+     *   "user": { ... },
+     *   "expiresIn": 25  // minutes remaining
+     * }
+     */
+    @GET("api/session/check")
+    suspend fun checkSession(
+        @Header("Authorization") token: String
+    ): Response<SessionValidationResponse>
+    
+    /**
+     * Get list of active sessions
+     * 
+     * USE CASE: Settings → Active Sessions
+     * User bisa lihat semua device yang sedang login
+     * 
+     * Endpoint: GET /api/session/list
+     * 
+     * @param token Session token (dengan prefix "Bearer")
+     * @return ActiveSessionsResponse dengan list sessions
+     */
+    @GET("api/session/list")
+    suspend fun getActiveSessions(
+        @Header("Authorization") token: String
+    ): Response<ActiveSessionsResponse>
+    
+    /**
+     * Revoke specific session by ID
+     * 
+     * USE CASE: Logout dari device tertentu
+     * 
+     * Endpoint: DELETE /api/session/{id}
+     * 
+     * @param token Current session token
+     * @param sessionId Session ID to revoke (String, bukan Int)
+     */
+    @DELETE("api/session/{id}")
+    suspend fun revokeSession(
+        @Header("Authorization") token: String,
+        @Path("id") sessionId: String
+    ): Response<Unit>
+    
+    /**
+     * Revoke all other sessions except current
+     * 
+     * USE CASE: "Logout from all other devices" button
+     * 
+     * Endpoint: POST /api/session/revoke-others
+     * 
+     * @param token Current session token
+     */
+    @POST("api/session/revoke-others")
+    suspend fun revokeOtherSessions(
+        @Header("Authorization") token: String
+    ): Response<Unit>
 }

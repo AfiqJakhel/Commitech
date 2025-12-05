@@ -2,17 +2,78 @@ package com.example.commitech.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.example.commitech.MainActivity
 import com.example.commitech.R
 
+/**
+ * InterviewNotificationHelper
+ *
+ * Helper object untuk mengelola notifikasi lokal terkait wawancara.
+ *
+ * FITUR:
+ * - Reminder notification: 10 menit sebelum wawancara dimulai
+ * - Warning notification: 5 menit sebelum wawancara selesai
+ * - Completion notification: Saat wawancara selesai
+ *
+ * NOTIFICATION CHANNELS:
+ * - REMINDER_CHANNEL_ID: Channel untuk reminder (priority: DEFAULT)
+ * - WARNING_CHANNEL_ID: Channel untuk warning (priority: HIGH, dengan vibration)
+ *
+ * CARA PENGGUNAAN:
+ * ```kotlin
+ * // 1. Pastikan channels sudah dibuat (biasanya di MainActivity.onCreate)
+ * InterviewNotificationHelper.ensureChannels(context)
+ *
+ * // 2. Tampilkan notifikasi
+ * InterviewNotificationHelper.showReminderNotification(
+ *     context = context,
+ *     participantName = "Budi Santoso",
+ *     scheduleLabel = "10:00 WIB"
+ * )
+ * ```
+ *
+ * CATATAN PENTING:
+ * - Icon notifikasi HARUS monochrome (putih) untuk Android notification tray
+ * - PendingIntent membuat notifikasi bisa dibuka dan masuk ke aplikasi
+ * - autoCancel(true) membuat notifikasi hilang saat di-tap
+ *
+ * @author Commitech Team
+ * @since 2025-12-05
+ */
 object InterviewNotificationHelper {
 
+    // Notification Channel IDs
     const val REMINDER_CHANNEL_ID = "interview_reminder_channel"
     const val WARNING_CHANNEL_ID = "interview_warning_channel"
 
+    // Intent extras keys untuk deep linking
+    const val EXTRA_PARTICIPANT_NAME = "extra_participant_name"
+    const val EXTRA_SCHEDULE_LABEL = "extra_schedule_label"
+    const val EXTRA_NOTIFICATION_TYPE = "extra_notification_type"
+
+    // Notification types
+    const val TYPE_REMINDER = "reminder"
+    const val TYPE_WARNING = "warning"
+    const val TYPE_COMPLETION = "completion"
+
+    /**
+     * Membuat notification channels untuk Android O (API 26) ke atas.
+     *
+     * Channels harus dibuat sebelum menampilkan notifikasi.
+     * Biasanya dipanggil di MainActivity.onCreate() atau saat app pertama kali dibuka.
+     *
+     * CHANNELS:
+     * 1. REMINDER_CHANNEL: Untuk reminder wawancara (priority: DEFAULT)
+     * 2. WARNING_CHANNEL: Untuk warning waktu habis (priority: HIGH + vibration)
+     *
+     * @param context Application context
+     */
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val notificationManager =
@@ -39,13 +100,43 @@ object InterviewNotificationHelper {
         notificationManager.createNotificationChannel(warningChannel)
     }
 
+    /**
+     * Menampilkan notifikasi reminder wawancara.
+     *
+     * Dipanggil 10 menit sebelum wawancara dimulai oleh InterviewReminderReceiver.
+     *
+     * FITUR:
+     * - Icon: Bell notification (monochrome white)
+     * - Priority: DEFAULT
+     * - Tap notification: Buka aplikasi ke halaman utama
+     * - Auto cancel: Notifikasi hilang saat di-tap
+     *
+     * @param context Application context
+     * @param participantName Nama peserta wawancara (contoh: "Budi Santoso")
+     * @param scheduleLabel Label jadwal (contoh: "10:00 WIB")
+     */
     fun showReminderNotification(
         context: Context,
         participantName: String,
         scheduleLabel: String
     ) {
+        // Buat intent untuk membuka aplikasi saat notifikasi di-tap
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_PARTICIPANT_NAME, participantName)
+            putExtra(EXTRA_SCHEDULE_LABEL, scheduleLabel)
+            putExtra(EXTRA_NOTIFICATION_TYPE, TYPE_REMINDER)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            ("reminder-$participantName-$scheduleLabel").hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_notification) // Icon monochrome white
             .setContentTitle(context.getString(R.string.notification_reminder_title))
             .setContentText(
                 context.getString(
@@ -55,7 +146,8 @@ object InterviewNotificationHelper {
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
+            .setContentIntent(pendingIntent) // Tap untuk buka app
+            .setAutoCancel(true) // Hilang saat di-tap
 
         NotificationManagerCompat.from(context).notify(
             ("reminder-$participantName-$scheduleLabel").hashCode(),
@@ -63,13 +155,44 @@ object InterviewNotificationHelper {
         )
     }
 
+    /**
+     * Menampilkan notifikasi warning waktu wawancara hampir habis.
+     *
+     * Dipanggil 5 menit sebelum wawancara selesai.
+     *
+     * FITUR:
+     * - Icon: Triangle warning (monochrome white)
+     * - Priority: HIGH (muncul di atas notifikasi lain)
+     * - Vibration: Enabled (dari channel settings)
+     * - Tap notification: Buka aplikasi
+     * - Auto cancel: Notifikasi hilang saat di-tap
+     *
+     * @param context Application context
+     * @param participantName Nama peserta wawancara
+     * @param scheduleLabel Label jadwal
+     */
     fun showWarningNotification(
         context: Context,
         participantName: String,
         scheduleLabel: String
     ) {
+        // Buat intent untuk membuka aplikasi
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_PARTICIPANT_NAME, participantName)
+            putExtra(EXTRA_SCHEDULE_LABEL, scheduleLabel)
+            putExtra(EXTRA_NOTIFICATION_TYPE, TYPE_WARNING)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            ("warning-$participantName-$scheduleLabel").hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = NotificationCompat.Builder(context, WARNING_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_warning)
+            .setSmallIcon(R.drawable.ic_notification_warning) // Triangle warning icon
             .setContentTitle(context.getString(R.string.notification_warning_title))
             .setContentText(
                 context.getString(
@@ -77,7 +200,8 @@ object InterviewNotificationHelper {
                     participantName
                 )
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // High priority
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
         NotificationManagerCompat.from(context).notify(
@@ -86,13 +210,43 @@ object InterviewNotificationHelper {
         )
     }
 
+    /**
+     * Menampilkan notifikasi wawancara selesai.
+     *
+     * Dipanggil saat wawancara telah selesai dilakukan.
+     *
+     * FITUR:
+     * - Icon: Checkmark in circle (monochrome white)
+     * - Priority: DEFAULT
+     * - Tap notification: Buka aplikasi
+     * - Auto cancel: Notifikasi hilang saat di-tap
+     *
+     * @param context Application context
+     * @param participantName Nama peserta wawancara
+     * @param scheduleLabel Label jadwal
+     */
     fun showCompletionNotification(
         context: Context,
         participantName: String,
         scheduleLabel: String
     ) {
+        // Buat intent untuk membuka aplikasi
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_PARTICIPANT_NAME, participantName)
+            putExtra(EXTRA_SCHEDULE_LABEL, scheduleLabel)
+            putExtra(EXTRA_NOTIFICATION_TYPE, TYPE_COMPLETION)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            ("done-$participantName-$scheduleLabel").hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_done)
+            .setSmallIcon(R.drawable.ic_notification_done) // Checkmark icon
             .setContentTitle(context.getString(R.string.notification_complete_title, participantName))
             .setContentText(
                 context.getString(
@@ -101,6 +255,7 @@ object InterviewNotificationHelper {
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
         NotificationManagerCompat.from(context).notify(

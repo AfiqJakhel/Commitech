@@ -30,10 +30,23 @@ fun SplashScreen(
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000)
     )
 
+    val authState by authViewModel.authState.collectAsState()
+
     LaunchedEffect(Unit) {
         visible = true
-        delay(1500) // Delay untuk animasi splash
-        onNavigateToLanding() // Selalu ke Landing, tidak auto-login
+        delay(1500) // Minimum delay untuk animasi splash
+        
+        // Wait until loading is finished
+        while (authState.isLoading) {
+            delay(100) // Poll every 100ms
+        }
+        
+        // CRITICAL: Check auth state untuk auto-login
+        if (authState.isAuthenticated && authState.token != null) {
+            onNavigateToHome()
+        } else {
+            onNavigateToLanding()
+        }
     }
 
     // Tampilan splash

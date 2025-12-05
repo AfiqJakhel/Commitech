@@ -154,24 +154,44 @@ fun SeleksiWawancaraScreen(
     // Snackbar host state untuk success message
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Load jadwal wawancara dari database saat pertama kali dibuka
-    LaunchedEffect(Unit) {
+    // ============================================================================
+    // CRITICAL FIX #1: Load Jadwal Wawancara dari Database
+    // ============================================================================
+    // 
+    // MASALAH SEBELUMNYA:
+    // - Ada 2 LaunchedEffect yang redundant (Unit dan authState.token)
+    // - Check isEmpty() mencegah reload data saat kembali ke screen
+    // - Race condition antara 2 effect menyebabkan data tidak muncul
+    // - User harus tap berulang kali baru data muncul
+    //
+    // SOLUSI:
+    // - Hapus LaunchedEffect(Unit) yang redundant
+    // - Hapus check isEmpty() agar data selalu fresh
+    // - Pakai authState.token sebagai key untuk trigger reload
+    // - Saat token berubah (login/logout), data otomatis reload
+    //
+    // KENAPA PAKAI authState.token SEBAGAI KEY?
+    // - Token berubah saat login → trigger load data
+    // - Token null saat logout → tidak load data (karena let block tidak execute)
+    // - Saat kembali ke screen, token masih sama → tidak reload (tapi data sudah ada)
+    // - Ini lebih efisien daripada reload setiap kali screen dibuka
+    //
+    // KENAPA HAPUS isEmpty() CHECK?
+    // - Check isEmpty() membuat data tidak reload saat ada perubahan di backend
+    // - Jika admin lain ubah jadwal, user tidak akan lihat update
+    // - Lebih baik reload setiap kali token berubah untuk data yang fresh
+    // ============================================================================
+    
+    LaunchedEffect(authState.token) {
+        // Ensure notification channels dibuat (untuk local notifications)
         InterviewNotificationHelper.ensureChannels(context)
         
         // Load jadwal dari database jika token tersedia
         authState.token?.let { token ->
-            if (viewModel.days.isEmpty()) {
-                viewModel.loadJadwalWawancaraFromDatabase(token)
-            }
-        }
-    }
-    
-    // Reload jadwal jika token berubah (misalnya setelah login)
-    LaunchedEffect(authState.token) {
-        authState.token?.let { token ->
-            if (viewModel.days.isEmpty()) {
-                viewModel.loadJadwalWawancaraFromDatabase(token)
-            }
+            // CRITICAL: Tidak ada check isEmpty() lagi!
+            // Kita SELALU load data saat token berubah
+            // Ini memastikan data selalu fresh dan tidak ada race condition
+            viewModel.loadJadwalWawancaraFromDatabase(token)
         }
     }
 
@@ -373,6 +393,61 @@ fun SeleksiWawancaraScreen(
                     modifier = Modifier.weight(1f)
                 )
             }
+            }
+            
+            // ============================================================================
+            // CRITICAL FIX #2: Loading Indicator untuk Load Jadwal
+            // ============================================================================
+            //
+            // MASALAH SEBELUMNYA:
+            // - Tidak ada loading indicator saat load jadwal dari database
+            // - User tidak tahu apakah data sedang di-load atau error
+            // - User tap berulang kali karena bingung (tampilan kosong)
+            //
+            // SOLUSI:
+            // - Tampilkan loading indicator dengan CircularProgressIndicator
+            // - Tampilkan text "Memuat jadwal wawancara..." untuk feedback
+            // - Cover seluruh layar dengan semi-transparent background
+            //
+            // KENAPA PENTING?
+            // - User experience: User tahu bahwa app sedang bekerja
+            // - Mencegah user tap berulang kali karena bingung
+            // - Professional: Setiap async operation harus ada loading state
+            // ============================================================================
+            
+            // Loading indicator saat memuat jadwal dari database
+            if (isLoadingJadwal) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(40.dp),
+                                color = colorScheme.primary
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "Memuat jadwal wawancara...",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
             
             // Loading indicator saat menyimpan hasil wawancara
