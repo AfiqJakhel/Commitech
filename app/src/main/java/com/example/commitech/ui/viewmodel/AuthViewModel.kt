@@ -236,7 +236,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _authState.value = _authState.value.copy(isLoading = true, error = null)
 
             try {
-<<<<<<< HEAD
                 val appContext = getApplication<Application>().applicationContext
                 val deviceName = Build.MODEL ?: "Unknown Device"
                 val deviceType = "android"
@@ -245,22 +244,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val response = repository.login(email, password, deviceName, deviceType, deviceId)
                 
-=======
-                // Collect device info
-                val deviceName = DeviceInfoHelper.getDeviceName()
-                val deviceType = DeviceInfoHelper.getDeviceType()
-                val deviceId = DeviceInfoHelper.getDeviceId(getApplication())
-
-                // Login dengan device info
-                val response = repository.login(
-                    email = email,
-                    password = password,
-                    deviceName = deviceName,
-                    deviceType = deviceType,
-                    deviceId = deviceId
-                )
-
->>>>>>> a0b982a03be01fd7f5e42552fc1794d46136a22f
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!
                     val token = authResponse.data.token

@@ -11,13 +11,7 @@ package com.example.commitech.data.model
 data class LoginRequest(
     val email: String,
     val password: String,
-<<<<<<< HEAD
     val device_name: String,
     val device_type: String,
     val device_id: String
-=======
-    val device_name: String,      // "Samsung Galaxy S21"
-    val device_type: String,      // "android"
-    val device_id: String         // Unique device identifier
->>>>>>> a0b982a03be01fd7f5e42552fc1794d46136a22f
 )
