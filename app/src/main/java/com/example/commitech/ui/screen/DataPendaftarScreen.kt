@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -226,6 +227,89 @@ fun DataPendaftarScreen(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // FITUR BARU: Search Bar dengan Button
+            var searchQuery by remember { mutableStateOf("") }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Search TextField
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { newQuery ->
+                        searchQuery = newQuery
+                    },
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(
+                            "Cari nama atau NIM...",
+                            color = colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = colorScheme.primary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                viewModel.clearSearch(authState.token)
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colorScheme.primary,
+                        unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f)
+                    ),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSearch = {
+                            viewModel.searchPendaftar(authState.token, searchQuery)
+                        }
+                    )
+                )
+                
+                // Search Button
+                Button(
+                    onClick = {
+                        viewModel.searchPendaftar(authState.token, searchQuery)
+                    },
+                    modifier = Modifier
+                        .height(56.dp)
+                        .width(100.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.primary,
+                        disabledContainerColor = Color(0xFFBDBDBD)
+                    ),
+                    enabled = !state.isLoading,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -757,10 +841,28 @@ fun DetailPendaftarDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Status dengan checkmark
-                DetailRowWithCheck(label = "Surat Komitmen")
-                DetailRowWithCheck(label = "CV")
-                DetailRowWithCheck(label = "KRS")
+                // PERBAIKAN: Tampilkan link Google Drive
+                Text(
+                    text = "Dokumen Pendaftar",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A40)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                DetailRowWithLink(
+                    label = "KRS Terakhir",
+                    link = pendaftar.krsTerakhir
+                )
+                DetailRowWithLink(
+                    label = "Formulir Pendaftaran",
+                    link = pendaftar.formulirPendaftaran
+                )
+                DetailRowWithLink(
+                    label = "Surat Komitmen",
+                    link = pendaftar.suratKomitmen
+                )
 
                 // Tombol Update & Delete
                 Spacer(modifier = Modifier.height(24.dp))
@@ -1153,6 +1255,71 @@ fun DetailRowWithCheck(label: String) {
             tint = Color(0xFF4CAF50),
             modifier = Modifier.size(24.dp)
         )
+    }
+}
+
+@Composable
+fun DetailRowWithLink(
+    label: String,
+    link: String?
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color(0xFF1A1A40),
+            modifier = Modifier.weight(1f)
+        )
+        
+        if (!link.isNullOrEmpty()) {
+            // Tombol link yang bisa diklik
+            TextButton(
+                onClick = {
+                    try {
+                        uriHandler.openUri(link)
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Gagal membuka link: ${e.message}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFF2196F3)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Open Link",
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFF2196F3)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Buka Link",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            Text(
+                text = "Tidak ada",
+                fontSize = 13.sp,
+                color = Color(0xFF9E9E9E),
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+        }
     }
 }
 

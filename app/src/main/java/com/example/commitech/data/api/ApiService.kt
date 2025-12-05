@@ -45,7 +45,8 @@ interface ApiService {
     suspend fun getPesertaList(
         @Header("Authorization") token: String,
         @retrofit2.http.Query("page") page: Int = 1,
-        @retrofit2.http.Query("per_page") perPage: Int = 20
+        @retrofit2.http.Query("per_page") perPage: Int = 20,
+        @retrofit2.http.Query("search") search: String? = null
     ): Response<PendaftarListResponse>
     
     @GET("api/peserta/{id}")

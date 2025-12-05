@@ -19,7 +19,10 @@ data class Pendaftar(
     val divisi1: String,
     val alasan1: String,
     val divisi2: String,
-    val alasan2: String
+    val alasan2: String,
+    val krsTerakhir: String? = null, // Link Google Drive KRS
+    val formulirPendaftaran: String? = null, // Link Google Drive Formulir
+    val suratKomitmen: String? = null // Link Google Drive Surat Komitmen
 )
 
 // Helper function to convert PendaftarResponse to Pendaftar
@@ -31,7 +34,10 @@ fun PendaftarResponse.toPendaftar(): Pendaftar {
         divisi1 = pilihanDivisi1 ?: "",
         alasan1 = alasan1 ?: "",
         divisi2 = pilihanDivisi2 ?: "",
-        alasan2 = alasan2 ?: ""
+        alasan2 = alasan2 ?: "",
+        krsTerakhir = krsTerakhir, // PERBAIKAN: Tambah link KRS
+        formulirPendaftaran = formulirPendaftaran, // PERBAIKAN: Tambah link Formulir
+        suratKomitmen = suratKomitmen // PERBAIKAN: Tambah link Surat Komitmen
     )
 }
 
@@ -67,10 +73,12 @@ data class DataPendaftarState(
     val isLoadingMore: Boolean = false, // Loading untuk load more (pagination)
     val error: String? = null,
     val importMessage: String? = null,
+    val importErrors: List<String>? = null, // PERBAIKAN: Tambah detail import errors
     val currentPage: Int = 1,
     val totalPages: Int = 1,
     val totalItems: Int = 0,
-    val hasMore: Boolean = false
+    val hasMore: Boolean = false,
+    val searchQuery: String = "" // FITUR BARU: Search query
 )
 
 class DataPendaftarViewModel : ViewModel() {
@@ -83,7 +91,7 @@ class DataPendaftarViewModel : ViewModel() {
     private val _state = MutableStateFlow(DataPendaftarState())
     val state: StateFlow<DataPendaftarState> = _state.asStateFlow()
 
-    fun loadPendaftarList(token: String?, page: Int = 1, append: Boolean = false) {
+    fun loadPendaftarList(token: String?, page: Int = 1, append: Boolean = false, search: String? = null) {
         if (token == null) {
             _state.value = _state.value.copy(error = "Token tidak tersedia. Silakan login ulang.")
             return
@@ -105,11 +113,14 @@ class DataPendaftarViewModel : ViewModel() {
             var lastError: String? = null
             val maxRetries = 3 // Coba maksimal 3 kali
             
+            // Gunakan search query dari state jika tidak ada parameter search
+            val searchQuery = search ?: _state.value.searchQuery.takeIf { it.isNotEmpty() }
+            
             repeat(maxRetries) { attempt ->
                 if (success) return@repeat
                 
                 try {
-                    val response = repository.getPesertaList(token, page, 20)
+                    val response = repository.getPesertaList(token, page, 20, searchQuery)
                     
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
@@ -215,6 +226,13 @@ class DataPendaftarViewModel : ViewModel() {
                     // Remove from local list
                     _pendaftarList.update { listSaatIni ->
                         listSaatIni.filterNot { it.id == pendaftar.id }
+                    }
+                    
+                    // PERBAIKAN: Update totalItems agar jumlah pendaftar langsung berkurang
+                    _state.update { currentState ->
+                        currentState.copy(
+                            totalItems = maxOf(0, currentState.totalItems - 1)
+                        )
                     }
                 } else {
                     _state.value = _state.value.copy(
@@ -387,5 +405,24 @@ class DataPendaftarViewModel : ViewModel() {
     
     fun clearError() {
         _state.value = _state.value.copy(error = null, importMessage = null)
+    }
+    
+    /**
+     * FITUR BARU: Search pendaftar berdasarkan nama/NIM
+     */
+    fun searchPendaftar(token: String?, query: String) {
+        // Update search query di state
+        _state.value = _state.value.copy(searchQuery = query)
+        
+        // Reload list dengan search query (reset ke page 1)
+        loadPendaftarList(token, page = 1, append = false, search = query.takeIf { it.isNotEmpty() })
+    }
+    
+    /**
+     * Clear search dan reload semua data
+     */
+    fun clearSearch(token: String?) {
+        _state.value = _state.value.copy(searchQuery = "")
+        loadPendaftarList(token, page = 1, append = false, search = null)
     }
 }

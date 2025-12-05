@@ -18,9 +18,10 @@ class DataPendaftarRepository {
     suspend fun getPesertaList(
         token: String,
         page: Int = 1,
-        perPage: Int = 20
+        perPage: Int = 20,
+        search: String? = null
     ): Response<PendaftarListResponse> {
-        return apiService.getPesertaList("Bearer $token", page, perPage)
+        return apiService.getPesertaList("Bearer $token", page, perPage, search)
     }
     
     suspend fun getPesertaById(token: String, id: Int): Response<PendaftarSingleResponse> {

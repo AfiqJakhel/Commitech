@@ -99,6 +99,7 @@ fun AppNavGraph(
     val seleksiWawancaraViewModel: SeleksiWawancaraViewModel = viewModel()
     val pengumumanViewModel: PengumumanViewModel = viewModel()
     val jadwalViewModel: JadwalViewModel = viewModel()
+    val dataPendaftarViewModel: DataPendaftarViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -185,6 +186,7 @@ fun AppNavGraph(
                 mainNavController = navController,
                 authViewModel = authViewModel,
                 jadwalViewModel = jadwalViewModel,
+                dataPendaftarViewModel = dataPendaftarViewModel,
                 onDataPendaftarClick = { navController.navigate("dataPendaftar") },
                 onSeleksiBerkasClick = { navController.navigate("seleksiBerkas") },
                 onIsiJadwalClick = { navController.navigate("jadwal_graph") },

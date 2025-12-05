@@ -44,6 +44,7 @@ fun HomeScreen(
     navController: androidx.navigation.NavController,
     authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
     jadwalViewModel: JadwalViewModel,
+    dataPendaftarViewModel: com.example.commitech.ui.viewmodel.DataPendaftarViewModel,
     onDataPendaftarClick: () -> Unit,
     onSeleksiBerkasClick: () -> Unit,
     onIsiJadwalClick: () -> Unit,
@@ -55,12 +56,16 @@ fun HomeScreen(
     val colorScheme = MaterialTheme.colorScheme
     val themeCard = LocalTheme.current
     val authState by authViewModel.authState.collectAsState()
+    val dataPendaftarState by dataPendaftarViewModel.state.collectAsState()
 
     var isVisible by remember { mutableStateOf(false) }
     
+    // Load data pendaftar saat HomeScreen dibuka
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
+        // Load jumlah pendaftar dari backend
+        dataPendaftarViewModel.loadPendaftarList(authState.token)
     }
     
     // Hitung jumlah notifikasi dari jadwal
@@ -294,8 +299,9 @@ fun HomeScreen(
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
+                                    // PERBAIKAN: Ganti hardcoded "35" dengan data dari backend
                                     Text(
-                                        text = "35",
+                                        text = "${dataPendaftarState.totalItems}",
                                         fontSize = 36.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color.White
