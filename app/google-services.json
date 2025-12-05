@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "318071552426",
+    "project_id": "commitech-3bcb4",
+    "storage_bucket": "commitech-3bcb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:318071552426:android:776cd54a322af035fad3d3",
+        "android_client_info": {
+          "package_name": "com.example.commitech"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7rh172qdvnLzfk6GR_fthcFhEO-FbLr8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

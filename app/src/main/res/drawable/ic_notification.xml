@@ -1,11 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Notification Icon - Monochrome (White)
+    
+    PENTING: Icon untuk notification tray HARUS monochrome (putih #FFFFFF)
+    agar Android system bisa mewarnai sesuai tema device (light/dark mode).
+    
+    Jangan gunakan warna selain putih untuk notification icon!
+    
+    Digunakan di:
+    - InterviewNotificationHelper.showReminderNotification()
+    - InterviewNotificationHelper.showCompletionNotification()
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#4B4DED"
+        android:fillColor="#FFFFFF"
         android:pathData="M12,22a2,2 0,0 0,2 -2h-4a2,2 0,0 0,2 2zM19,17.5V11a7,7 0,0 0,-5 -6.71V3a2,2 0,1 0,-4 0v1.29A7,7 0,0 0,5 11v6.5l-1.71,1.7a1,1 0,0 0,0.71 1.71h16a1,1 0,0 0,0.71 -1.71Z" />
 </vector>
 
