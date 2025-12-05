@@ -5,6 +5,7 @@ import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.PendaftarListResponse
 import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.PendaftarSingleResponse
+import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
 import java.io.File
@@ -44,6 +45,14 @@ class DataPendaftarRepository {
         val requestFile = file.asRequestBody("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".toMediaTypeOrNull())
         val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
         return apiService.importExcel("Bearer $token", body)
+    }
+    
+    suspend fun updateStatusSeleksiBerkas(
+        token: String,
+        id: Int,
+        request: UpdateStatusSeleksiBerkasRequest
+    ): Response<PendaftarSingleResponse> {
+        return apiService.updateStatusSeleksiBerkas("Bearer $token", id, request)
     }
 }
 

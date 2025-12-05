@@ -27,8 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.commitech.notification.InterviewAlarmScheduler
 import com.example.commitech.ui.viewmodel.JadwalViewModel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -41,7 +43,22 @@ fun JadwalRekrutmenScreen(
     navController: NavController,
     viewModel: JadwalViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val daftarJadwal = viewModel.daftarJadwal
+    
+    // Schedule alarm untuk semua jadwal yang ada (H-1)
+    LaunchedEffect(daftarJadwal) {
+        daftarJadwal.forEach { jadwal ->
+            InterviewAlarmScheduler.scheduleJadwalReminder(
+                context = context,
+                jadwalId = jadwal.id,
+                judul = jadwal.judul,
+                tanggalMulai = jadwal.tanggalMulai,
+                waktuMulai = jadwal.waktuMulai,
+                pewawancara = jadwal.pewawancara
+            )
+        }
+    }
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     val today = LocalDate.now()
@@ -295,6 +312,13 @@ fun JadwalRekrutmenScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 17.sp,
                                     color = colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Pewawancara: ${jadwal.pewawancara}",
+                                    fontSize = 13.sp,
+                                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Medium
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(

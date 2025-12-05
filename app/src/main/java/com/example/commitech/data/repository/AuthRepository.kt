@@ -43,18 +43,30 @@ class AuthRepository {
     }
     
     suspend fun login(
+<<<<<<< HEAD
+        email: String,
+=======
         email: String, 
+>>>>>>> a0b982a03be01fd7f5e42552fc1794d46136a22f
         password: String,
         deviceName: String,
         deviceType: String,
         deviceId: String
     ): Response<AuthResponse> {
         val request = LoginRequest(
+<<<<<<< HEAD
+            email = email,
+            password = password,
+            device_name = deviceName,
+            device_type = deviceType,
+            device_id = deviceId
+=======
             email, 
             password,
             deviceName,
             deviceType,
             deviceId
+>>>>>>> a0b982a03be01fd7f5e42552fc1794d46136a22f
         )
         return apiService.login(request)
     }

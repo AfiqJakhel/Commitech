@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +42,9 @@ import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -96,6 +99,7 @@ import com.example.commitech.ui.viewmodel.InterviewEvent
 import com.example.commitech.ui.viewmodel.InterviewStatus
 import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
+import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.collectAsState
 import android.app.TimePickerDialog
@@ -130,7 +134,10 @@ import java.util.Locale
 fun SeleksiWawancaraScreen(
     viewModel: SeleksiWawancaraViewModel,
     authViewModel: AuthViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    navController: androidx.navigation.NavController? = null,
+    jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel? = null,
+    seleksiBerkasViewModel: SeleksiBerkasViewModel? = null
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Jadwal", "Status")
@@ -386,6 +393,9 @@ fun SeleksiWawancaraScreen(
                 0 -> WawancaraJadwalContent(
                     viewModel = viewModel,
                     authState = authState,
+                    jadwalViewModel = jadwalViewModel,
+                    navController = navController,
+                    seleksiBerkasViewModel = seleksiBerkasViewModel,
                     modifier = Modifier.weight(1f)
                 )
                 1 -> WawancaraStatusContent(
@@ -532,19 +542,154 @@ fun SeleksiWawancaraScreen(
 fun WawancaraJadwalContent(
     viewModel: SeleksiWawancaraViewModel,
     authState: com.example.commitech.ui.viewmodel.AuthState,
+    jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel? = null,
+    navController: androidx.navigation.NavController? = null,
+    seleksiBerkasViewModel: SeleksiBerkasViewModel? = null,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val daftarJadwal = jadwalViewModel?.daftarJadwal ?: emptyList()
+    
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Card-card jadwal rekrutmen dengan pewawancara
+        if (daftarJadwal.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Jadwal Wawancara",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            items(daftarJadwal) { jadwal ->
+                JadwalRekrutmenCard(
+                    jadwal = jadwal,
+                    jadwalViewModel = jadwalViewModel,
+                    onClick = {
+                        navController?.navigate("detailJadwalWawancara/${jadwal.id}")
+                    }
+                )
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(thickness = 1.dp, color = colorScheme.onSurface.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Jadwal Peserta",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+        
+        // Jadwal peserta (existing)
         items(viewModel.days.size) { index ->
             ExpandableDayCard(
                 viewModel = viewModel,
                 dayIndex = index,
                 authState = authState
+            )
+        }
+    }
+}
+
+@Composable
+fun JadwalRekrutmenCard(
+    jadwal: com.example.commitech.ui.viewmodel.Jadwal,
+    jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel?,
+    onClick: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val jumlahPeserta = jadwalViewModel?.getPesertaByJadwalId(jadwal.id)?.size ?: 0
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .shadow(6.dp, RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = jadwal.judul,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = colorScheme.onSurface
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Pewawancara: ${jadwal.pewawancara}",
+                        fontSize = 14.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${jadwal.tanggalMulai} - ${jadwal.tanggalSelesai}",
+                    fontSize = 13.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
+                    fontSize = 13.sp,
+                    color = Color(0xFF9C27B0),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = colorScheme.primary.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        text = "$jumlahPeserta/5 peserta",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Detail",
+                tint = colorScheme.primary,
+                modifier = Modifier.size(24.dp)
             )
         }
     }

@@ -61,6 +61,7 @@ fun Pendaftar.toPendaftarResponse(): PendaftarResponse {
         formulirPendaftaran = null,
         suratKomitmen = null,
         pindahDivisi = null,
+        statusSeleksiBerkas = null, // Default null, akan di-set oleh backend
         tanggalJadwal = null,
         waktuJadwal = null,
         lokasi = null

@@ -71,6 +71,8 @@ data class PendaftarResponse(
     @SerializedName("pindah_divisi")
     @JsonAdapter(BooleanFromIntDeserializer::class)
     val pindahDivisi: Boolean?,
+    @SerializedName("status_seleksi_berkas")
+    val statusSeleksiBerkas: String?, // Enum: belum_direview, lulus, tidak_lulus
     @SerializedName("tanggal_jadwal")
     val tanggalJadwal: String?,
     @SerializedName("waktu_jadwal")

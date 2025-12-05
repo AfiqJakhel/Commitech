@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -39,7 +40,16 @@ fun SeleksiBerkasScreen(
     onBackClick: () -> Unit
 ) {
     val pesertaList by viewModel.pesertaList.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
     val isDark = isSystemInDarkTheme()
+    
+    // Tampilkan error jika ada
+    LaunchedEffect(error) {
+        error?.let {
+            // Error sudah di-handle di ViewModel, bisa ditampilkan di UI jika perlu
+        }
+    }
 
     // 🎨 Warna berdasarkan tema
     val backgroundColor = if (isDark) Color(0xFF121212) else Color.White
@@ -89,19 +99,70 @@ fun SeleksiBerkasScreen(
                 .background(backgroundColor)
                 .padding(innerPadding)
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp),
-                contentPadding = PaddingValues(bottom = 120.dp)
-            ) {
-                itemsIndexed(pesertaList) { index, peserta ->
-                    PesertaCard(
-                        index = index + 1,
-                        peserta = peserta,
-                        cardColor = cardColor,
-                        textColor = textColor
+            if (isLoading) {
+                // Loading indicator
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color(0xFF4A3A79)
+                )
+            } else if (error != null) {
+                // Error message
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Error: $error",
+                        color = Color(0xFFD32F2F),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
+                    Button(
+                        onClick = { viewModel.refresh() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A3A79))
+                    ) {
+                        Text("Coba Lagi", color = Color.White)
+                    }
+                }
+            } else if (pesertaList.isEmpty()) {
+                // Empty state
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Belum ada data pendaftar",
+                        color = textColor,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Text(
+                        text = "Silakan import data dari Excel atau tunggu pendaftar mendaftar",
+                        color = subTitleColor,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    contentPadding = PaddingValues(bottom = 120.dp)
+                ) {
+                    itemsIndexed(pesertaList) { index, peserta ->
+                        PesertaCard(
+                            index = index + 1,
+                            peserta = peserta,
+                            cardColor = cardColor,
+                            textColor = textColor,
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
 
@@ -131,12 +192,21 @@ fun PesertaCard(
     index: Int,
     peserta: Peserta,
     cardColor: Color,
-    textColor: Color
+    textColor: Color,
+    viewModel: SeleksiBerkasViewModel
 ) {
     var showInfoDialog by remember { mutableStateOf(false) }
     var showAcceptDialog by remember { mutableStateOf(false) }
     var showRejectDialog by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf<Boolean?>(null) }
+    
+    // Collect peserta list untuk mendapatkan update terbaru
+    val pesertaList by viewModel.pesertaList.collectAsState()
+    val pesertaTerbaru = remember(pesertaList) { 
+        pesertaList.find { it.nama == peserta.nama } ?: peserta 
+    }
+    
+    // Gunakan status dari peserta terbaru
+    val status = if (pesertaTerbaru.lulusBerkas) true else if (pesertaTerbaru.ditolak) false else null
 
     val animatedBorderColor by animateColorAsState(
         targetValue = when (status) {
@@ -174,7 +244,7 @@ fun PesertaCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        peserta.nama,
+                        pesertaTerbaru.nama,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = textColor
@@ -222,6 +292,7 @@ fun PesertaCard(
                 }
             }
 
+            // Button Terima/Tolak - muncul jika belum direview (status == null)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (status == null) {
                     // Tombol Terima
@@ -251,26 +322,26 @@ fun PesertaCard(
     // 🔹 Dialog Pop-up
     if (showInfoDialog) {
         InfoDialog(
-            peserta = peserta,
+            peserta = pesertaTerbaru,
             onDismiss = { showInfoDialog = false }
         )
     }
     if (showAcceptDialog) {
         AcceptDialog(
-            peserta = peserta,
+            peserta = pesertaTerbaru,
             onDismiss = { showAcceptDialog = false },
             onConfirm = { _ ->
-                status = true
+                viewModel.updatePesertaStatus(pesertaTerbaru.nama, lulusBerkas = true, ditolak = false)
                 showAcceptDialog = false
             }
         )
     }
     if (showRejectDialog) {
         RejectDialog(
-            peserta = peserta,
+            peserta = pesertaTerbaru,
             onDismiss = { showRejectDialog = false },
             onConfirm = { _ ->
-                status = false
+                viewModel.updatePesertaStatus(pesertaTerbaru.nama, lulusBerkas = false, ditolak = true)
                 showRejectDialog = false
             }
         )

@@ -20,10 +20,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.example.commitech.notification.InterviewAlarmScheduler
+import com.example.commitech.notification.InterviewNotificationHelper
 import com.example.commitech.ui.viewmodel.JadwalViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 
@@ -34,9 +38,11 @@ fun UbahJadwalScreen(
     viewModel: JadwalViewModel,
     jadwalId: Int
 ) {
+    val context = LocalContext.current
     val jadwal = viewModel.getJadwalById(jadwalId) ?: return
     
     var judul by remember { mutableStateOf(jadwal.judul) }
+    var pewawancara by remember { mutableStateOf(jadwal.pewawancara) }
     var tglMulai by remember { mutableStateOf(jadwal.tanggalMulai) }
     var tglSelesai by remember { mutableStateOf(jadwal.tanggalSelesai) }
     var wktMulai by remember { mutableStateOf(jadwal.waktuMulai) }
@@ -133,6 +139,21 @@ fun UbahJadwalScreen(
                         onValueChange = { judul = it },
                         label = { Text("Judul Jadwal") },
                         placeholder = { Text("Masukkan judul jadwal...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = pewawancara,
+                        onValueChange = { pewawancara = it },
+                        label = { Text("Nama Pewawancara") },
+                        placeholder = { Text("Masukkan nama pewawancara...") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -274,7 +295,42 @@ fun UbahJadwalScreen(
                             tglMulai,
                             tglSelesai,
                             wktMulai.ifBlank { "-" },
-                            wktSelesai.ifBlank { "-" }
+                            wktSelesai.ifBlank { "-" },
+                            pewawancara
+                        )
+                        
+                        // Cek apakah jadwal untuk hari ini atau besok
+                        try {
+                            val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("id", "ID"))
+                            val tanggalJadwal = LocalDate.parse(tglMulai, dateFormatter)
+                            val hariIni = LocalDate.now()
+                            val daysBetween = ChronoUnit.DAYS.between(hariIni, tanggalJadwal)
+                            
+                            // Jika jadwal hari ini atau besok, tampilkan notifikasi langsung
+                            if (daysBetween == 0L || daysBetween == 1L) {
+                                InterviewNotificationHelper.showJadwalUrgentNotification(
+                                    context = context,
+                                    judulJadwal = judul,
+                                    tanggalMulai = tglMulai,
+                                    waktuMulai = wktMulai.ifBlank { "09.00" },
+                                    waktuSelesai = wktSelesai.ifBlank { "-" },
+                                    pewawancara = pewawancara.ifBlank { "-" },
+                                    isToday = daysBetween == 0L
+                                )
+                            }
+                        } catch (e: Exception) {
+                            // Jika parsing gagal, lanjutkan saja
+                            e.printStackTrace()
+                        }
+                        
+                        // Schedule ulang alarm H-1 untuk notifikasi (jika bukan hari ini/besok)
+                        InterviewAlarmScheduler.scheduleJadwalReminder(
+                            context = context,
+                            jadwalId = jadwalId,
+                            judul = judul,
+                            tanggalMulai = tglMulai,
+                            waktuMulai = wktMulai.ifBlank { "09.00" },
+                            pewawancara = pewawancara.ifBlank { "-" }
                         )
                         navController.popBackStack()
                     }

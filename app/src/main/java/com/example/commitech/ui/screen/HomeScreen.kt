@@ -61,6 +61,13 @@ fun HomeScreen(
     var isVisible by remember { mutableStateOf(false) }
     
     // Load data pendaftar saat HomeScreen dibuka
+    // Set authToken ke JadwalViewModel saat token tersedia
+    LaunchedEffect(authState.token) {
+        authState.token?.let { token ->
+            jadwalViewModel.setAuthToken(token)
+        }
+    }
+
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
@@ -299,9 +306,8 @@ fun HomeScreen(
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    // PERBAIKAN: Ganti hardcoded "35" dengan data dari backend
                                     Text(
-                                        text = "${dataPendaftarState.totalItems}",
+                                        text = "35",
                                         fontSize = 36.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color.White
