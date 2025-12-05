@@ -307,7 +307,7 @@ fun HomeScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "35",
+                                        text = dataPendaftarState.totalItems.toString(),
                                         fontSize = 36.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color.White

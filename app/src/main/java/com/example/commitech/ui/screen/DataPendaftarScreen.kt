@@ -787,6 +787,7 @@ fun DetailPendaftarDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
                 // Header dengan nama dan tombol close
