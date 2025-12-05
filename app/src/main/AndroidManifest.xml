@@ -32,7 +32,8 @@
         </activity>
         <receiver
             android:name=".notification.InterviewReminderReceiver"
-            android:exported="false" />
+            android:exported="false"
+            android:enabled="true" />
     </application>
 
 </manifest>

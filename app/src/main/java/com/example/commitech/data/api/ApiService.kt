@@ -9,6 +9,12 @@ import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
+import com.example.commitech.data.model.JadwalRekrutmenItem
+import com.example.commitech.data.model.JadwalRekrutmenResponse
+import com.example.commitech.data.model.JadwalRekrutmenSingleResponse
+import com.example.commitech.data.model.AssignPesertaRequest
+import com.example.commitech.data.model.AssignPesertaResponse
+import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -78,6 +84,14 @@ interface ApiService {
         @Part file: MultipartBody.Part
     ): Response<ImportExcelResponse>
     
+    // Update status seleksi berkas
+    @PUT("api/peserta/{id}/status-seleksi-berkas")
+    suspend fun updateStatusSeleksiBerkas(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: UpdateStatusSeleksiBerkasRequest
+    ): Response<PendaftarSingleResponse>
+    
     // ==========================================
     // API Hasil Wawancara (Modul 4 - Fitur 16-17)
     // ==========================================
@@ -104,4 +118,61 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
+
+    // ==========================================
+    // API Jadwal Rekrutmen
+    // ==========================================
+
+    @GET("api/jadwal-rekrutmen")
+    suspend fun getJadwalRekrutmen(
+        @Header("Authorization") token: String
+    ): Response<JadwalRekrutmenResponse>
+
+    @GET("api/jadwal-rekrutmen/{id}")
+    suspend fun getJadwalRekrutmenById(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<JadwalRekrutmenSingleResponse>
+
+    @POST("api/jadwal-rekrutmen")
+    suspend fun createJadwalRekrutmen(
+        @Header("Authorization") token: String,
+        @Body jadwal: JadwalRekrutmenItem
+    ): Response<JadwalRekrutmenSingleResponse>
+
+    @PUT("api/jadwal-rekrutmen/{id}")
+    suspend fun updateJadwalRekrutmen(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body jadwal: JadwalRekrutmenItem
+    ): Response<JadwalRekrutmenSingleResponse>
+
+    @DELETE("api/jadwal-rekrutmen/{id}")
+    suspend fun deleteJadwalRekrutmen(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<Unit>
+
+    // Assign peserta ke jadwal rekrutmen
+    @POST("api/jadwal-rekrutmen/{id}/peserta")
+    suspend fun assignPesertaToJadwal(
+        @Header("Authorization") token: String,
+        @Path("id") jadwalId: Int,
+        @Body request: AssignPesertaRequest
+    ): Response<AssignPesertaResponse>
+
+    // Get peserta yang di-assign ke jadwal
+    @GET("api/jadwal-rekrutmen/{id}/peserta")
+    suspend fun getPesertaByJadwal(
+        @Header("Authorization") token: String,
+        @Path("id") jadwalId: Int
+    ): Response<PendaftarListResponse>
+
+    // Remove peserta dari jadwal
+    @DELETE("api/jadwal-rekrutmen/{id}/peserta/{pesertaId}")
+    suspend fun removePesertaFromJadwal(
+        @Header("Authorization") token: String,
+        @Path("id") jadwalId: Int,
+        @Path("pesertaId") pesertaId: Int
+    ): Response<Unit>
 }

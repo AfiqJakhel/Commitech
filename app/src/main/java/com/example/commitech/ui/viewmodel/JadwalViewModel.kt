@@ -1,9 +1,21 @@
 package com.example.commitech.ui.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.commitech.data.api.ApiService
+import com.example.commitech.data.api.RetrofitClient
+import com.example.commitech.data.model.JadwalRekrutmenItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+// Import untuk Peserta
+import com.example.commitech.ui.viewmodel.Peserta
 
 data class Jadwal(
     val id: Int,
@@ -11,38 +23,356 @@ data class Jadwal(
     val tanggalMulai: String,
     val tanggalSelesai: String,
     val waktuMulai: String,
-    val waktuSelesai: String
+    val waktuSelesai: String,
+    val pewawancara: String
 )
 
 class JadwalViewModel : ViewModel() {
     val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("in", "ID"))
-    private var nextId = 3
-    private val _daftarJadwal = mutableStateListOf(
-        Jadwal(1, "Seleksi Berkas", "10 Nov 2025", "12 Nov 2025", "09.00", "15.00"),
-        Jadwal(2, "Seleksi Wawancara", "15 Nov 2025", "17 Nov 2025", "09.00", "15.00")
-    )
-    val daftarJadwal: List<Jadwal> get() = _daftarJadwal
+    private val api: ApiService = RetrofitClient.apiService
 
-    fun tambahJadwal(judul: String, tglMulai: String, tglSelesai: String, jamMulai: String, jamSelesai: String) {
-        _daftarJadwal.add(Jadwal(nextId++, judul.trim(), tglMulai, tglSelesai, jamMulai.trim(), jamSelesai.trim()))
+    private var authToken: String = ""
+
+    private val _daftarJadwal = mutableStateListOf<Jadwal>()
+    val daftarJadwal: List<Jadwal> get() = _daftarJadwal
+    
+    // State untuk menyimpan peserta yang dipilih per jadwal
+    // Key: jadwalId, Value: List<Peserta>
+    private val _pesertaPerJadwal = mutableMapOf<Int, MutableList<Peserta>>()
+    val pesertaPerJadwal: Map<Int, List<Peserta>> get() = _pesertaPerJadwal
+    
+    fun getPesertaByJadwalId(jadwalId: Int): List<Peserta> {
+        return _pesertaPerJadwal[jadwalId] ?: emptyList()
+    }
+    
+    fun tambahPesertaKeJadwal(jadwalId: Int, peserta: Peserta) {
+        val currentList = _pesertaPerJadwal.getOrPut(jadwalId) { mutableListOf() }
+        // Cek apakah peserta sudah ada
+        if (!currentList.any { it.nama == peserta.nama }) {
+            // Cek maksimal 5 peserta
+            if (currentList.size < 5) {
+                currentList.add(peserta)
+            }
+        }
+    }
+    
+    fun hapusPesertaDariJadwal(jadwalId: Int, namaPeserta: String) {
+        val peserta = _pesertaPerJadwal[jadwalId]?.find { it.nama == namaPeserta }
+        
+        // Hapus dari local state dulu untuk immediate UI update
+        _pesertaPerJadwal[jadwalId]?.removeAll { it.nama == namaPeserta }
+        
+        // Hapus dari database juga jika ada ID
+        if (authToken.isNotBlank() && peserta?.id != null) {
+            removePesertaFromJadwal(jadwalId, peserta.id)
+        } else {
+            Log.w("JadwalViewModel", "Tidak bisa hapus peserta dari database: authToken=${authToken.isNotBlank()}, pesertaId=${peserta?.id}")
+        }
+    }
+    
+    private fun removePesertaFromJadwal(jadwalId: Int, pesertaId: Int) {
+        viewModelScope.launch {
+            try {
+                Log.d("JadwalViewModel", "Menghapus peserta $pesertaId dari jadwal $jadwalId")
+                
+                val resp = withContext(Dispatchers.IO) {
+                    api.removePesertaFromJadwal("Bearer $authToken", jadwalId, pesertaId)
+                }
+                
+                if (resp.isSuccessful) {
+                    Log.d("JadwalViewModel", "Peserta berhasil dihapus dari jadwal")
+                } else {
+                    Log.e("JadwalViewModel", "Gagal hapus peserta dari jadwal: ${resp.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "Error saat hapus peserta dari jadwal", e)
+            }
+        }
+    }
+    
+    fun setPesertaUntukJadwal(jadwalId: Int, pesertaList: List<Peserta>) {
+        // Maksimal 5 peserta
+        val pesertaTerbatas = pesertaList.take(5)
+        _pesertaPerJadwal[jadwalId] = pesertaTerbatas.toMutableList()
+        
+        // Simpan ke database via API
+        if (authToken.isNotBlank() && pesertaTerbatas.isNotEmpty()) {
+            savePesertaToJadwal(jadwalId, pesertaTerbatas)
+        } else if (pesertaTerbatas.isEmpty()) {
+            // Jika tidak ada peserta yang dipilih, hapus semua peserta dari jadwal di database
+            // (optional: bisa dihapus jika ingin membiarkan peserta lama tetap ada)
+            Log.d("JadwalViewModel", "Tidak ada peserta yang dipilih untuk jadwal $jadwalId")
+        }
+    }
+    
+    private fun savePesertaToJadwal(jadwalId: Int, pesertaList: List<Peserta>) {
+        viewModelScope.launch {
+            try {
+                // Filter peserta yang memiliki ID (untuk API call)
+                val pesertaIds = pesertaList.mapNotNull { it.id }
+                val pesertaTanpaId = pesertaList.filter { it.id == null }
+                
+                if (pesertaTanpaId.isNotEmpty()) {
+                    Log.w("JadwalViewModel", "Beberapa peserta tidak memiliki ID dan akan dilewati: ${pesertaTanpaId.map { it.nama }}")
+                }
+                
+                if (pesertaIds.isEmpty()) {
+                    Log.e("JadwalViewModel", "Tidak ada peserta dengan ID yang valid untuk disimpan ke jadwal $jadwalId")
+                    Log.e("JadwalViewModel", "Peserta yang dipilih: ${pesertaList.map { "${it.nama} (ID: ${it.id})" }}")
+                    return@launch
+                }
+                
+                val request = com.example.commitech.data.model.AssignPesertaRequest(pesertaIds)
+                
+                Log.d("JadwalViewModel", "Mengirim ${pesertaIds.size} peserta ke jadwal $jadwalId: $pesertaIds")
+                
+                val resp = withContext(Dispatchers.IO) {
+                    api.assignPesertaToJadwal("Bearer $authToken", jadwalId, request)
+                }
+                
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    Log.d("JadwalViewModel", "✅ Peserta berhasil di-assign ke jadwal: ${body?.pesan}")
+                    Log.d("JadwalViewModel", "Data: ${body?.data}")
+                    
+                    // Refresh peserta dari database setelah berhasil disimpan
+                    loadPesertaFromJadwal(jadwalId)
+                } else {
+                    Log.e("JadwalViewModel", "❌ Gagal assign peserta ke jadwal: ${resp.code()} - ${resp.message()}")
+                    resp.errorBody()?.string()?.let { 
+                        Log.e("JadwalViewModel", "Error body: $it") 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "❌ Error saat assign peserta ke jadwal", e)
+            }
+        }
+    }
+    
+    fun loadPesertaFromJadwal(jadwalId: Int) {
+        if (authToken.isBlank()) {
+            Log.w("JadwalViewModel", "AuthToken kosong, tidak bisa load peserta dari jadwal")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val resp = withContext(Dispatchers.IO) {
+                    api.getPesertaByJadwal("Bearer $authToken", jadwalId)
+                }
+                
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    body?.data?.let { pesertaList ->
+                        // Convert PendaftarResponse ke Peserta
+                        val peserta = pesertaList.map { pendaftar ->
+                            val status = pendaftar.statusSeleksiBerkas ?: "lulus" // Default lulus karena sudah di jadwal
+                            Peserta(
+                                id = pendaftar.id,
+                                nama = pendaftar.nama ?: "Nama tidak diketahui",
+                                lulusBerkas = true, // Peserta di jadwal sudah lulus berkas
+                                ditolak = false,
+                                statusSeleksiBerkas = status
+                            )
+                        }
+                        _pesertaPerJadwal[jadwalId] = peserta.toMutableList()
+                        Log.d("JadwalViewModel", "Berhasil load ${peserta.size} peserta dari jadwal $jadwalId")
+                    }
+                } else {
+                    Log.e("JadwalViewModel", "Gagal load peserta dari jadwal: ${resp.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "Error saat load peserta dari jadwal", e)
+            }
+        }
+    }
+
+    fun setAuthToken(token: String) {
+        authToken = token
+        fetchJadwal()
+    }
+
+    private fun mapRemoteToLocal(item: JadwalRekrutmenItem): Jadwal {
+        return Jadwal(
+            id = item.id,
+            judul = item.judul,
+            tanggalMulai = item.tanggalMulai,
+            tanggalSelesai = item.tanggalSelesai,
+            waktuMulai = item.waktuMulai,
+            waktuSelesai = item.waktuSelesai,
+            pewawancara = item.pewawancara ?: "-"
+        )
+    }
+
+    fun fetchJadwal() {
+        if (authToken.isBlank()) {
+            Log.w("JadwalViewModel", "AuthToken kosong, tidak bisa fetch jadwal")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val resp = withContext(Dispatchers.IO) {
+                    api.getJadwalRekrutmen("Bearer $authToken")
+                }
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    body?.data?.let { list ->
+                        _daftarJadwal.clear()
+                        _daftarJadwal.addAll(list.map { mapRemoteToLocal(it) })
+                        Log.d("JadwalViewModel", "Berhasil fetch ${list.size} jadwal dari database")
+                    } ?: Log.w("JadwalViewModel", "Response body kosong")
+                } else {
+                    Log.e("JadwalViewModel", "Gagal fetch jadwal: ${resp.code()} - ${resp.message()}")
+                    resp.errorBody()?.string()?.let { Log.e("JadwalViewModel", "Error body: $it") }
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "Error saat fetch jadwal", e)
+            }
+        }
+    }
+
+    fun tambahJadwal(
+        judul: String,
+        tglMulai: String,
+        tglSelesai: String,
+        jamMulai: String,
+        jamSelesai: String,
+        pewawancara: String
+    ) {
+        val newItem = Jadwal(
+            id = (_daftarJadwal.maxOfOrNull { it.id } ?: 0) + 1,
+            judul = judul.trim(),
+            tanggalMulai = tglMulai,
+            tanggalSelesai = tglSelesai,
+            waktuMulai = jamMulai.trim(),
+            waktuSelesai = jamSelesai.trim(),
+            pewawancara = pewawancara.trim().ifBlank { "-" }
+        )
+        _daftarJadwal.add(newItem)
+
+        if (authToken.isBlank()) {
+            Log.w("JadwalViewModel", "AuthToken kosong, jadwal hanya tersimpan lokal")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val requestItem = JadwalRekrutmenItem(
+                    id = 0,
+                    judul = newItem.judul,
+                    tanggalMulai = newItem.tanggalMulai,
+                    tanggalSelesai = newItem.tanggalSelesai,
+                    waktuMulai = newItem.waktuMulai,
+                    waktuSelesai = newItem.waktuSelesai,
+                    pewawancara = newItem.pewawancara
+                )
+                
+                Log.d("JadwalViewModel", "Mengirim jadwal ke database: $requestItem")
+                
+                val resp = withContext(Dispatchers.IO) {
+                    api.createJadwalRekrutmen("Bearer $authToken", requestItem)
+                }
+                
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    Log.d("JadwalViewModel", "Jadwal berhasil disimpan ke database: ${body?.data}")
+                    // Refresh data dari database untuk mendapatkan ID yang benar
+                    fetchJadwal()
+                } else {
+                    Log.e("JadwalViewModel", "Gagal menyimpan jadwal: ${resp.code()} - ${resp.message()}")
+                    resp.errorBody()?.string()?.let { 
+                        Log.e("JadwalViewModel", "Error body: $it") 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "Error saat menyimpan jadwal ke database", e)
+            }
+        }
     }
 
     fun getJadwalById(id: Int) = _daftarJadwal.find { it.id == id }
 
-    fun ubahJadwal(id: Int, judul: String, tglMulai: String, tglSelesai: String, jamMulai: String, jamSelesai: String) {
+    fun ubahJadwal(
+        id: Int,
+        judul: String,
+        tglMulai: String,
+        tglSelesai: String,
+        jamMulai: String,
+        jamSelesai: String,
+        pewawancara: String
+    ) {
         val index = _daftarJadwal.indexOfFirst { it.id == id }
         if (index != -1) {
-            _daftarJadwal[index] = _daftarJadwal[index].copy(
+            val updated = _daftarJadwal[index].copy(
                 judul = judul.trim(),
                 tanggalMulai = tglMulai,
                 tanggalSelesai = tglSelesai,
                 waktuMulai = jamMulai.trim(),
-                waktuSelesai = jamSelesai.trim()
+                waktuSelesai = jamSelesai.trim(),
+                pewawancara = pewawancara.trim().ifBlank { "-" }
             )
+            _daftarJadwal[index] = updated
+
+            if (authToken.isBlank()) {
+                Log.w("JadwalViewModel", "AuthToken kosong, perubahan hanya tersimpan lokal")
+                return
+            }
+            
+            viewModelScope.launch {
+                try {
+                    val requestItem = JadwalRekrutmenItem(
+                        id = id,
+                        judul = updated.judul,
+                        tanggalMulai = updated.tanggalMulai,
+                        tanggalSelesai = updated.tanggalSelesai,
+                        waktuMulai = updated.waktuMulai,
+                        waktuSelesai = updated.waktuSelesai,
+                        pewawancara = updated.pewawancara
+                    )
+                    
+                    Log.d("JadwalViewModel", "Mengupdate jadwal ID $id ke database")
+                    
+                    val resp = withContext(Dispatchers.IO) {
+                        api.updateJadwalRekrutmen("Bearer $authToken", id, requestItem)
+                    }
+                    
+                    if (resp.isSuccessful) {
+                        Log.d("JadwalViewModel", "Jadwal berhasil diupdate di database")
+                        fetchJadwal()
+                    } else {
+                        Log.e("JadwalViewModel", "Gagal update jadwal: ${resp.code()} - ${resp.message()}")
+                        resp.errorBody()?.string()?.let { 
+                            Log.e("JadwalViewModel", "Error body: $it") 
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("JadwalViewModel", "Error saat update jadwal ke database", e)
+                }
+            }
         }
     }
 
     fun hapusJadwal(id: Int) {
         _daftarJadwal.removeAll { it.id == id }
+        if (authToken.isBlank()) {
+            Log.w("JadwalViewModel", "AuthToken kosong, penghapusan hanya lokal")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                Log.d("JadwalViewModel", "Menghapus jadwal ID $id dari database")
+                val resp = withContext(Dispatchers.IO) {
+                    api.deleteJadwalRekrutmen("Bearer $authToken", id)
+                }
+                if (resp.isSuccessful) {
+                    Log.d("JadwalViewModel", "Jadwal berhasil dihapus dari database")
+                    fetchJadwal()
+                } else {
+                    Log.e("JadwalViewModel", "Gagal hapus jadwal: ${resp.code()} - ${resp.message()}")
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "Error saat hapus jadwal dari database", e)
+            }
+        }
     }
 }

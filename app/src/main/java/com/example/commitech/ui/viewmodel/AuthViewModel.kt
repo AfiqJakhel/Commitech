@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
+import android.os.Build
+import android.provider.Settings
 
 data class AuthState(
     val isLoading: Boolean = false,
@@ -82,7 +84,13 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             _authState.value = _authState.value.copy(isLoading = true, error = null)
             
             try {
-                val response = repository.login(email, password)
+                val appContext = getApplication<Application>().applicationContext
+                val deviceName = Build.MODEL ?: "Unknown Device"
+                val deviceType = "android"
+                val deviceId = Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID)
+                    ?: "unknown-device-id"
+                
+                val response = repository.login(email, password, deviceName, deviceType, deviceId)
                 
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!

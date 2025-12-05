@@ -67,7 +67,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                     0L -> NotificationItem(
                         id = jadwal.id,
                         title = "Pengingat Urgent!",
-                        message = "${jadwal.judul} berlangsung hari ini pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
+                        message = "${jadwal.judul} berlangsung hari ini pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}. Pewawancara: ${jadwal.pewawancara}",
                         time = "Hari ini",
                         type = NotificationType.URGENT,
                         icon = Icons.Default.Warning
@@ -75,7 +75,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                     1L -> NotificationItem(
                         id = jadwal.id,
                         title = "Pengingat Jadwal",
-                        message = "${jadwal.judul} akan berlangsung besok pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
+                        message = "${jadwal.judul} akan berlangsung besok pada pukul ${jadwal.waktuMulai} - ${jadwal.waktuSelesai}. Pewawancara: ${jadwal.pewawancara}",
                         time = "Besok",
                         type = NotificationType.REMINDER,
                         icon = Icons.Default.Event

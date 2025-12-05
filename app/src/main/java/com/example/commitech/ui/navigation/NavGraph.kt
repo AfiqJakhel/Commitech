@@ -3,12 +3,16 @@ package com.example.commitech.ui.navigation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.commitech.ui.screen.*
 import com.example.commitech.ui.screen.UbahJadwalScreen
+import com.example.commitech.ui.screen.DetailJadwalWawancaraScreen
 import com.example.commitech.ui.viewmodel.*
 
 // Animation constants - Modern Web Style
@@ -240,6 +244,18 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) {
             val viewModel: SeleksiBerkasViewModel = viewModel()
+            val authState by authViewModel.authState.collectAsState()
+            
+            // Set token untuk load data dari database
+            // Hanya load jika token tersedia dan user sudah authenticated
+            LaunchedEffect(authState.token, authState.isAuthenticated) {
+                if (authState.isAuthenticated && authState.token != null) {
+                    viewModel.setAuthToken(authState.token!!)
+                } else {
+                    // Clear error jika token tidak tersedia (jangan tampilkan error)
+                    viewModel.clearError()
+                }
+            }
             SeleksiBerkasScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
         }
 
@@ -251,11 +267,39 @@ fun AppNavGraph(
             popEnterTransition = { powerPointPushPopEnter() },
             popExitTransition = { powerPointPushPopExit() }
         ) {
+            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel()
             SeleksiWawancaraScreen(
                 viewModel = seleksiWawancaraViewModel,
                 authViewModel = authViewModel,  // Tambahkan authViewModel untuk token API call (Fitur 16)
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                navController = navController,
+                jadwalViewModel = jadwalViewModel,
+                seleksiBerkasViewModel = seleksiBerkasViewModel
             )
+        }
+        
+        // 📋 Detail Jadwal Wawancara
+        composable(
+            route = "detailJadwalWawancara/{jadwalId}",
+            arguments = listOf(navArgument("jadwalId") { type = NavType.IntType }),
+            enterTransition = { powerPointPushEnter() },
+            exitTransition = { powerPointPushExit() },
+            popEnterTransition = { powerPointPushPopEnter() },
+            popExitTransition = { powerPointPushPopExit() }
+        ) { backStackEntry ->
+            val jadwalId = backStackEntry.arguments?.getInt("jadwalId") ?: return@composable
+            val jadwal = jadwalViewModel.getJadwalById(jadwalId)
+            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel()
+            
+            if (jadwal != null) {
+                DetailJadwalWawancaraScreen(
+                    navController = navController,
+                    jadwal = jadwal,
+                    seleksiBerkasViewModel = seleksiBerkasViewModel,
+                    jadwalViewModel = jadwalViewModel,
+                    authViewModel = authViewModel
+                )
+            }
         }
 
         // 📢 Pengumuman Kelulusan (menggunakan shared ViewModel)

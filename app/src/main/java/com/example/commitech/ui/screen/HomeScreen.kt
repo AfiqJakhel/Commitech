@@ -58,6 +58,13 @@ fun HomeScreen(
 
     var isVisible by remember { mutableStateOf(false) }
     
+    // Set authToken ke JadwalViewModel saat token tersedia
+    LaunchedEffect(authState.token) {
+        authState.token?.let { token ->
+            jadwalViewModel.setAuthToken(token)
+        }
+    }
+    
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
