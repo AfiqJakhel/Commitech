@@ -1,11 +1,14 @@
 package com.example.commitech.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.commitech.MainActivity
@@ -120,6 +123,17 @@ object InterviewNotificationHelper {
         participantName: String,
         scheduleLabel: String
     ) {
+        // Check permission untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+        
         // Buat intent untuk membuka aplikasi saat notifikasi di-tap
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -135,19 +149,28 @@ object InterviewNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Logo Commitech berwarna penuh (Large Icon di kanan)
+        val largeIcon = android.graphics.BitmapFactory.decodeResource(
+            context.resources,
+            R.drawable.commitechlogo
+        )
+
+        // STYLE: Unified Commitech Style (Sama untuk semua tipe)
+        // Color: Purple 500 (Brand Color)
         val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification) // Icon monochrome white
-            .setContentTitle(context.getString(R.string.notification_reminder_title))
-            .setContentText(
-                context.getString(
-                    R.string.notification_reminder_body,
-                    participantName,
-                    scheduleLabel
-                )
+            .setSmallIcon(R.drawable.ic_notification) // Ganti logo CT dengan icon Lonceng biasa (Wajib ada)
+            .setLargeIcon(largeIcon)
+            .setContentTitle("Wawancara: $participantName")
+            .setContentText("⏰ $scheduleLabel · Segera bersiap")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("⏰ $scheduleLabel · Segera bersiap\nKetuk untuk melihat detail jadwal")
             )
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent) // Tap untuk buka app
-            .setAutoCancel(true) // Hilang saat di-tap
+            // .setColor dihapus agar icon kiri jadi warna default sistem (biasanya abu-abu/hitam netral)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setShowWhen(true)
 
         NotificationManagerCompat.from(context).notify(
             ("reminder-$participantName-$scheduleLabel").hashCode(),
@@ -176,6 +199,17 @@ object InterviewNotificationHelper {
         participantName: String,
         scheduleLabel: String
     ) {
+        // Check permission untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+        
         // Buat intent untuk membuka aplikasi
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -191,18 +225,28 @@ object InterviewNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Logo Commitech berwarna penuh (Large Icon di kanan)
+        val largeIcon = android.graphics.BitmapFactory.decodeResource(
+            context.resources,
+            R.drawable.commitechlogo
+        )
+
+        // STYLE: Unified Commitech Style (Desain SAMA, isi BEDA)
         val builder = NotificationCompat.Builder(context, WARNING_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_warning) // Triangle warning icon
-            .setContentTitle(context.getString(R.string.notification_warning_title))
-            .setContentText(
-                context.getString(
-                    R.string.notification_warning_body,
-                    participantName
-                )
+            .setSmallIcon(R.drawable.ic_notification) // Ganti logo CT dengan icon Lonceng biasa
+            .setLargeIcon(largeIcon)
+            .setContentTitle("Sisa Waktu: 5 Menit")
+            .setContentText("⚠️ $participantName · Segera selesaikan")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("⚠️ $participantName · Segera selesaikan\nKetuk untuk membuka sesi wawancara")
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH) // High priority
+            // .setColor dihapus agar icon kiri netral
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT) // Samakan category
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setShowWhen(true)
+            .setShowWhen(true)
 
         NotificationManagerCompat.from(context).notify(
             ("warning-$participantName-$scheduleLabel").hashCode(),
@@ -230,6 +274,17 @@ object InterviewNotificationHelper {
         participantName: String,
         scheduleLabel: String
     ) {
+        // Check permission untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
+        
         // Buat intent untuk membuka aplikasi
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -245,18 +300,28 @@ object InterviewNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Logo Commitech berwarna penuh (Large Icon di kanan)
+        val largeIcon = android.graphics.BitmapFactory.decodeResource(
+            context.resources,
+            R.drawable.commitechlogo
+        )
+
+        // STYLE: Unified Commitech Style (Desain SAMA, isi BEDA)
         val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_done) // Checkmark icon
-            .setContentTitle(context.getString(R.string.notification_complete_title, participantName))
-            .setContentText(
-                context.getString(
-                    R.string.notification_complete_body,
-                    scheduleLabel
-                )
+            .setSmallIcon(R.drawable.ic_notification) // Ganti logo CT dengan icon Lonceng biasa
+            .setLargeIcon(largeIcon)
+            .setContentTitle("Wawancara Selesai")
+            .setContentText("✅ $participantName · Berjalan lancar")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("✅ $participantName · Berjalan lancar\nKetuk untuk melihat hasil wawancara")
             )
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            // .setColor dihapus agar icon kiri netral
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // Samakan priority
+            .setCategory(NotificationCompat.CATEGORY_EVENT) // Samakan category
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setShowWhen(true)
+            .setShowWhen(true)
 
         NotificationManagerCompat.from(context).notify(
             ("done-$participantName-$scheduleLabel").hashCode(),
