@@ -9,6 +9,8 @@ import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
+import com.example.commitech.data.model.SessionValidationResponse
+import com.example.commitech.data.model.ActiveSessionsResponse
 import com.example.commitech.data.model.JadwalRekrutmenItem
 import com.example.commitech.data.model.JadwalRekrutmenResponse
 import com.example.commitech.data.model.JadwalRekrutmenSingleResponse
@@ -119,6 +121,43 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
+
+    // ==========================================
+    // API Session Management (HYBRID APPROACH)
+    // ==========================================
+    
+    /**
+     * Check session validity
+     */
+    @GET("api/session/check")
+    suspend fun checkSession(
+        @Header("Authorization") token: String
+    ): Response<SessionValidationResponse>
+    
+    /**
+     * Get list of active sessions
+     */
+    @GET("api/session/list")
+    suspend fun getActiveSessions(
+        @Header("Authorization") token: String
+    ): Response<ActiveSessionsResponse>
+    
+    /**
+     * Revoke specific session by ID
+     */
+    @DELETE("api/session/{id}")
+    suspend fun revokeSession(
+        @Header("Authorization") token: String,
+        @Path("id") sessionId: String
+    ): Response<Unit>
+    
+    /**
+     * Revoke all other sessions except current
+     */
+    @POST("api/session/revoke-others")
+    suspend fun revokeOtherSessions(
+        @Header("Authorization") token: String
+    ): Response<Unit>
 
     // ==========================================
     // API Jadwal Rekrutmen

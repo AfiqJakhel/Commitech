@@ -14,7 +14,4 @@ data class LoginRequest(
     val device_name: String,
     val device_type: String,
     val device_id: String
-    val device_name: String,      // "Samsung Galaxy S21"
-    val device_type: String,      // "android"
-    val device_id: String         // Unique device identifier
 )
