@@ -45,6 +45,31 @@ class JadwalViewModel : ViewModel() {
         return _pesertaPerJadwal[jadwalId] ?: emptyList()
     }
     
+    /**
+     * Mendapatkan semua peserta yang sudah ada di jadwal manapun (kecuali jadwal tertentu)
+     * Digunakan untuk filter peserta yang sudah terdaftar di jadwal lain
+     */
+    fun getAllPesertaDiJadwalLain(kecualiJadwalId: Int): Set<Int> {
+        return _pesertaPerJadwal
+            .filterKeys { it != kecualiJadwalId }
+            .values
+            .flatten()
+            .mapNotNull { it.id }
+            .toSet()
+    }
+    
+    /**
+     * Mendapatkan semua peserta yang sudah ada di jadwal manapun berdasarkan nama
+     */
+    fun getAllPesertaNamaDiJadwalLain(kecualiJadwalId: Int): Set<String> {
+        return _pesertaPerJadwal
+            .filterKeys { it != kecualiJadwalId }
+            .values
+            .flatten()
+            .map { it.nama }
+            .toSet()
+    }
+    
     fun tambahPesertaKeJadwal(jadwalId: Int, peserta: Peserta) {
         val currentList = _pesertaPerJadwal.getOrPut(jadwalId) { mutableListOf() }
         // Cek apakah peserta sudah ada
@@ -102,6 +127,66 @@ class JadwalViewModel : ViewModel() {
             // Jika tidak ada peserta yang dipilih, hapus semua peserta dari jadwal di database
             // (optional: bisa dihapus jika ingin membiarkan peserta lama tetap ada)
             Log.d("JadwalViewModel", "Tidak ada peserta yang dipilih untuk jadwal $jadwalId")
+        }
+    }
+    
+    /**
+     * Assign peserta ke jadwal menggunakan List<Int> (peserta IDs)
+     * Fungsi ini akan menambahkan peserta yang dipilih ke peserta yang sudah ada di jadwal
+     */
+    fun assignPesertaToJadwal(
+        token: String,
+        jadwalId: Int,
+        pesertaIds: List<Int>,
+        onComplete: () -> Unit = {}
+    ) {
+        authToken = token
+        viewModelScope.launch {
+            try {
+                // Load peserta yang sudah ada di jadwal untuk validasi
+                val currentPesertaResp = withContext(Dispatchers.IO) {
+                    api.getPesertaByJadwal("Bearer $token", jadwalId)
+                }
+                
+                var currentCount = 0
+                if (currentPesertaResp.isSuccessful) {
+                    currentPesertaResp.body()?.data?.let {
+                        currentCount = it.size
+                    }
+                }
+                
+                // Validasi maksimal 5 peserta total (peserta lama + baru)
+                val totalPeserta = currentCount + pesertaIds.size
+                
+                if (totalPeserta > 5) {
+                    Log.e("JadwalViewModel", "Total peserta melebihi batas maksimal 5. Current: $currentCount, New: ${pesertaIds.size}, Total: $totalPeserta")
+                    return@launch
+                }
+                
+                val request = com.example.commitech.data.model.AssignPesertaRequest(pesertaIds)
+                
+                Log.d("JadwalViewModel", "Assigning ${pesertaIds.size} peserta ke jadwal $jadwalId (Current: $currentCount, Total akan: $totalPeserta): $pesertaIds")
+                
+                val resp = withContext(Dispatchers.IO) {
+                    api.assignPesertaToJadwal("Bearer $token", jadwalId, request)
+                }
+                
+                if (resp.isSuccessful) {
+                    val body = resp.body()
+                    Log.d("JadwalViewModel", "✅ Peserta berhasil di-assign ke jadwal: ${body?.pesan}")
+                    
+                    // Refresh peserta dari jadwal setelah berhasil
+                    loadPesertaFromJadwal(jadwalId)
+                    onComplete()
+                } else {
+                    Log.e("JadwalViewModel", "❌ Gagal assign peserta ke jadwal: ${resp.code()} - ${resp.message()}")
+                    resp.errorBody()?.string()?.let { 
+                        Log.e("JadwalViewModel", "Error body: $it") 
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("JadwalViewModel", "❌ Error saat assign peserta ke jadwal", e)
+            }
         }
     }
     
@@ -164,25 +249,58 @@ class JadwalViewModel : ViewModel() {
                 if (resp.isSuccessful) {
                     val body = resp.body()
                     body?.data?.let { pesertaList ->
-                        // Convert PendaftarResponse ke Peserta
-                        val peserta = pesertaList.map { pendaftar ->
-                            val status = pendaftar.statusSeleksiBerkas ?: "lulus" // Default lulus karena sudah di jadwal
-                            Peserta(
-                                id = pendaftar.id,
-                                nama = pendaftar.nama ?: "Nama tidak diketahui",
-                                lulusBerkas = true, // Peserta di jadwal sudah lulus berkas
-                                ditolak = false,
-                                statusSeleksiBerkas = status
-                            )
+                        try {
+                            // Convert PendaftarResponse ke Peserta
+                            val peserta = pesertaList.mapNotNull { pendaftar ->
+                                try {
+                                    Peserta(
+                                        id = pendaftar.id,
+                                        nama = pendaftar.nama ?: "Nama tidak diketahui",
+                                        nim = pendaftar.nim,
+                                        email = pendaftar.email,
+                                        telepon = pendaftar.telepon,
+                                        jurusan = pendaftar.jurusan,
+                                        angkatan = pendaftar.angkatan,
+                                        divisi1 = pendaftar.pilihanDivisi1,
+                                        alasan1 = pendaftar.alasan1,
+                                        divisi2 = pendaftar.pilihanDivisi2,
+                                        alasan2 = pendaftar.alasan2,
+                                        krsTerakhir = pendaftar.krsTerakhir,
+                                        formulirPendaftaran = pendaftar.formulirPendaftaran?.toString(),
+                                        suratKomitmen = pendaftar.suratKomitmen?.toString(),
+                                        lulusBerkas = true, // Peserta di jadwal sudah lulus berkas
+                                        ditolak = false,
+                                        statusSeleksiBerkas = "lulus" // Default lulus karena sudah di jadwal
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("JadwalViewModel", "Error converting peserta ${pendaftar.id}: ${e.message}", e)
+                                    null
+                                }
+                            }
+                            
+                            // Hapus peserta yang sama dari jadwal lain untuk mencegah duplikasi
+                            val pesertaIds = peserta.mapNotNull { it.id }.toSet()
+                            _pesertaPerJadwal.forEach { (otherJadwalId, otherPesertaList) ->
+                                if (otherJadwalId != jadwalId) {
+                                    // Hapus peserta yang memiliki ID yang sama
+                                    otherPesertaList.removeAll { it.id in pesertaIds }
+                                }
+                            }
+                            
+                            _pesertaPerJadwal[jadwalId] = peserta.toMutableList()
+                            Log.d("JadwalViewModel", "Berhasil load ${peserta.size} peserta dari jadwal $jadwalId")
+                        } catch (e: Exception) {
+                            Log.e("JadwalViewModel", "Error processing peserta list: ${e.message}", e)
                         }
-                        _pesertaPerJadwal[jadwalId] = peserta.toMutableList()
-                        Log.d("JadwalViewModel", "Berhasil load ${peserta.size} peserta dari jadwal $jadwalId")
+                    } ?: run {
+                        Log.w("JadwalViewModel", "Response body data is null untuk jadwal $jadwalId")
                     }
                 } else {
-                    Log.e("JadwalViewModel", "Gagal load peserta dari jadwal: ${resp.code()}")
+                    val errorBody = resp.errorBody()?.string()
+                    Log.e("JadwalViewModel", "Gagal load peserta dari jadwal $jadwalId: ${resp.code()} - ${resp.message()}. Error body: $errorBody")
                 }
             } catch (e: Exception) {
-                Log.e("JadwalViewModel", "Error saat load peserta dari jadwal", e)
+                Log.e("JadwalViewModel", "Error saat load peserta dari jadwal $jadwalId: ${e.message}", e)
             }
         }
     }

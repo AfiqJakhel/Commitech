@@ -65,20 +65,22 @@ data class PendaftarResponse(
     @SerializedName("krs_terakhir")
     val krsTerakhir: String?,
     @SerializedName("formulir_pendaftaran")
-    val formulirPendaftaran: String?, // PERBAIKAN: Ubah dari Boolean ke String untuk menyimpan URL
+    @JsonAdapter(BooleanFromIntDeserializer::class)
+    val formulirPendaftaran: Boolean?,
     @SerializedName("surat_komitmen")
-    val suratKomitmen: String?, // PERBAIKAN: Ubah dari Boolean ke String untuk menyimpan URL
+    @JsonAdapter(BooleanFromIntDeserializer::class)
+    val suratKomitmen: Boolean?,
     @SerializedName("pindah_divisi")
     @JsonAdapter(BooleanFromIntDeserializer::class)
     val pindahDivisi: Boolean?,
-    @SerializedName("status_seleksi_berkas")
-    val statusSeleksiBerkas: String?, // Enum: belum_direview, lulus, tidak_lulus
     @SerializedName("tanggal_jadwal")
     val tanggalJadwal: String?,
     @SerializedName("waktu_jadwal")
     val waktuJadwal: String?,
     @SerializedName("lokasi")
-    val lokasi: String?
+    val lokasi: String?,
+    @SerializedName("status_seleksi_berkas")
+    val statusSeleksiBerkas: String?
 )
 
 data class PendaftarListResponse(

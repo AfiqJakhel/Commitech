@@ -7,16 +7,15 @@ import com.example.commitech.data.model.PendaftarListResponse
 import com.example.commitech.data.model.PendaftarSingleResponse
 import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.ImportExcelResponse
+import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
 import com.example.commitech.data.model.SessionValidationResponse
 import com.example.commitech.data.model.ActiveSessionsResponse
-import com.example.commitech.data.model.JadwalRekrutmenItem
 import com.example.commitech.data.model.JadwalRekrutmenResponse
 import com.example.commitech.data.model.JadwalRekrutmenSingleResponse
+import com.example.commitech.data.model.JadwalRekrutmenItem
 import com.example.commitech.data.model.AssignPesertaRequest
-import com.example.commitech.data.model.AssignPesertaResponse
-import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -44,6 +43,25 @@ interface ApiService {
     suspend fun getUser(@Header("Authorization") token: String): Response<AuthResponse>
     
     // ==========================================
+    // API Session Management
+    // ==========================================
+    
+    @GET("api/session/check")
+    suspend fun checkSession(@Header("Authorization") token: String): Response<SessionValidationResponse>
+    
+    @GET("api/session/list")
+    suspend fun getActiveSessions(@Header("Authorization") token: String): Response<ActiveSessionsResponse>
+    
+    @DELETE("api/session/{id}")
+    suspend fun revokeSession(
+        @Header("Authorization") token: String,
+        @Path("id") sessionId: String
+    ): Response<Unit>
+    
+    @POST("api/session/revoke-others")
+    suspend fun revokeOtherSessions(@Header("Authorization") token: String): Response<Unit>
+    
+    // ==========================================
     // API Peserta/Data Pendaftar
     // ==========================================
     
@@ -51,8 +69,7 @@ interface ApiService {
     suspend fun getPesertaList(
         @Header("Authorization") token: String,
         @retrofit2.http.Query("page") page: Int = 1,
-        @retrofit2.http.Query("per_page") perPage: Int = 20,
-        @retrofit2.http.Query("search") search: String? = null
+        @retrofit2.http.Query("per_page") perPage: Int = 20
     ): Response<PendaftarListResponse>
     
     @GET("api/peserta/{id}")
@@ -60,6 +77,11 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     ): Response<PendaftarSingleResponse>
+    
+    @GET("api/peserta/lulus-tanpa-jadwal")
+    suspend fun getPesertaLulusTanpaJadwal(
+        @Header("Authorization") token: String
+    ): Response<PendaftarListResponse>
     
     @POST("api/peserta")
     suspend fun createPeserta(
@@ -87,7 +109,6 @@ interface ApiService {
         @Part file: MultipartBody.Part
     ): Response<ImportExcelResponse>
     
-    // Update status seleksi berkas
     @PUT("api/peserta/{id}/status-seleksi-berkas")
     suspend fun updateStatusSeleksiBerkas(
         @Header("Authorization") token: String,
@@ -121,94 +142,48 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
-
-    // ==========================================
-    // API Session Management (HYBRID APPROACH)
-    // ==========================================
     
-    /**
-     * Check session validity
-     */
-    @GET("api/session/check")
-    suspend fun checkSession(
-        @Header("Authorization") token: String
-    ): Response<SessionValidationResponse>
-    
-    /**
-     * Get list of active sessions
-     */
-    @GET("api/session/list")
-    suspend fun getActiveSessions(
-        @Header("Authorization") token: String
-    ): Response<ActiveSessionsResponse>
-    
-    /**
-     * Revoke specific session by ID
-     */
-    @DELETE("api/session/{id}")
-    suspend fun revokeSession(
-        @Header("Authorization") token: String,
-        @Path("id") sessionId: String
-    ): Response<Unit>
-    
-    /**
-     * Revoke all other sessions except current
-     */
-    @POST("api/session/revoke-others")
-    suspend fun revokeOtherSessions(
-        @Header("Authorization") token: String
-    ): Response<Unit>
-
     // ==========================================
     // API Jadwal Rekrutmen
     // ==========================================
-
+    
     @GET("api/jadwal-rekrutmen")
     suspend fun getJadwalRekrutmen(
         @Header("Authorization") token: String
     ): Response<JadwalRekrutmenResponse>
-
-    @GET("api/jadwal-rekrutmen/{id}")
-    suspend fun getJadwalRekrutmenById(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<JadwalRekrutmenSingleResponse>
-
+    
     @POST("api/jadwal-rekrutmen")
     suspend fun createJadwalRekrutmen(
         @Header("Authorization") token: String,
         @Body jadwal: JadwalRekrutmenItem
     ): Response<JadwalRekrutmenSingleResponse>
-
+    
     @PUT("api/jadwal-rekrutmen/{id}")
     suspend fun updateJadwalRekrutmen(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
         @Body jadwal: JadwalRekrutmenItem
     ): Response<JadwalRekrutmenSingleResponse>
-
+    
     @DELETE("api/jadwal-rekrutmen/{id}")
     suspend fun deleteJadwalRekrutmen(
         @Header("Authorization") token: String,
         @Path("id") id: Int
     ): Response<Unit>
-
-    // Assign peserta ke jadwal rekrutmen
+    
     @POST("api/jadwal-rekrutmen/{id}/peserta")
     suspend fun assignPesertaToJadwal(
         @Header("Authorization") token: String,
         @Path("id") jadwalId: Int,
         @Body request: AssignPesertaRequest
-    ): Response<AssignPesertaResponse>
-
-    // Get peserta yang di-assign ke jadwal
+    ): Response<JadwalRekrutmenSingleResponse>
+    
     @GET("api/jadwal-rekrutmen/{id}/peserta")
     suspend fun getPesertaByJadwal(
         @Header("Authorization") token: String,
         @Path("id") jadwalId: Int
     ): Response<PendaftarListResponse>
-
-    // Remove peserta dari jadwal
+    
     @DELETE("api/jadwal-rekrutmen/{id}/peserta/{pesertaId}")
     suspend fun removePesertaFromJadwal(
         @Header("Authorization") token: String,

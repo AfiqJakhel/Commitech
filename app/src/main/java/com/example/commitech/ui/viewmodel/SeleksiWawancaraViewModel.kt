@@ -16,8 +16,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -105,6 +107,9 @@ class SeleksiWawancaraViewModel : ViewModel() {
     private val _days = mutableStateListOf<DayData>()
     val days: List<DayData> get() = _days
     
+    // Track jadwal yang sudah di-merge untuk menghindari duplikasi
+    private val mergedJadwalIds = mutableSetOf<Int>()
+    
     // State untuk loading jadwal dari database
     private val _isLoadingJadwal = MutableStateFlow(false)
     val isLoadingJadwal: StateFlow<Boolean> = _isLoadingJadwal.asStateFlow()
@@ -127,10 +132,54 @@ class SeleksiWawancaraViewModel : ViewModel() {
     
     private val _saveHasilSuccess = MutableStateFlow<String?>(null)
     val saveHasilSuccess: StateFlow<String?> = _saveHasilSuccess.asStateFlow()
+    
+    // State untuk peserta lulus tanpa jadwal
+    private val _pesertaLulusTanpaJadwal = mutableStateListOf<PendaftarResponse>()
+    val pesertaLulusTanpaJadwal: List<PendaftarResponse> get() = _pesertaLulusTanpaJadwal
+    
+    private val _isLoadingPesertaLulus = MutableStateFlow(false)
+    val isLoadingPesertaLulus: StateFlow<Boolean> = _isLoadingPesertaLulus.asStateFlow()
+    
+    private val _pesertaLulusError = MutableStateFlow<String?>(null)
+    val pesertaLulusError: StateFlow<String?> = _pesertaLulusError.asStateFlow()
 
     init {
         // Init kosong - data akan di-load dari database saat screen dibuka
         // Mock data dihapus, diganti dengan load dari database
+    }
+    
+    /**
+     * Load peserta yang lulus seleksi berkas tapi belum ada jadwal wawancara
+     */
+    fun loadPesertaLulusTanpaJadwal(token: String?) {
+        if (token == null) {
+            _pesertaLulusError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+        
+        viewModelScope.launch {
+            _isLoadingPesertaLulus.value = true
+            _pesertaLulusError.value = null
+            
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    dataPendaftarRepository.getPesertaLulusTanpaJadwal(token)
+                }
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    _pesertaLulusTanpaJadwal.clear()
+                    _pesertaLulusTanpaJadwal.addAll(body.data)
+                    _isLoadingPesertaLulus.value = false
+                } else {
+                    _pesertaLulusError.value = "Gagal memuat peserta lulus tanpa jadwal. Status: ${response.code()}"
+                    _isLoadingPesertaLulus.value = false
+                }
+            } catch (e: Exception) {
+                _pesertaLulusError.value = "Error: ${e.message}"
+                _isLoadingPesertaLulus.value = false
+            }
+        }
     }
     
     /**
@@ -376,6 +425,120 @@ class SeleksiWawancaraViewModel : ViewModel() {
     fun totalParticipants(): Int = _days.sumOf { it.participants.size }
 
     fun getAllParticipants(): List<ParticipantData> = days.flatMap { it.participants }
+    
+    /**
+     * Merge peserta dari jadwal rekrutmen ke dalam days
+     * Fungsi ini akan mengkonversi peserta dari JadwalViewModel ke format DayData dan ParticipantData
+     * 
+     * @param jadwalList List jadwal rekrutmen
+     * @param pesertaPerJadwal Map jadwalId ke List<Peserta>
+     */
+    fun mergePesertaFromJadwalRekrutmen(
+        jadwalList: List<com.example.commitech.ui.viewmodel.Jadwal>,
+        pesertaPerJadwal: Map<Int, List<com.example.commitech.ui.viewmodel.Peserta>>
+    ) {
+        viewModelScope.launch {
+            // Buat map untuk menyimpan peserta per tanggal
+            val pesertaByDate = mutableMapOf<String, MutableList<ParticipantData>>()
+            
+            // Iterate semua jadwal dan peserta
+            jadwalList.forEach { jadwal ->
+                // Skip jika jadwal ini sudah di-merge sebelumnya
+                if (mergedJadwalIds.contains(jadwal.id)) return@forEach
+                
+                val pesertaList = pesertaPerJadwal[jadwal.id] ?: emptyList()
+                
+                if (pesertaList.isEmpty()) return@forEach
+                
+                // Parse tanggal mulai untuk grouping
+                val tanggalMulai = jadwal.tanggalMulai
+                val formattedDate = formatDate(tanggalMulai)
+                
+                // Parse waktu mulai jadwal
+                val waktuMulaiParts = jadwal.waktuMulai.replace(" WIB", "").split(":", ".", " ")
+                val jamMulai = waktuMulaiParts.firstOrNull()?.toIntOrNull() ?: 9
+                val menitMulai = waktuMulaiParts.getOrNull(1)?.toIntOrNull() ?: 0
+                
+                // Konversi peserta ke ParticipantData dengan waktu yang benar per jadwal
+                val participants = pesertaList.mapIndexed { index, peserta ->
+                    // Hitung waktu untuk peserta ini (setiap 6 menit dari waktu mulai jadwal)
+                    val menitJadwal = menitMulai + (index * 6)
+                    val jamJadwal = jamMulai + (menitJadwal / 60)
+                    val menitJadwalFinal = menitJadwal % 60
+                    val waktuFormatted = String.format("%02d.%02d WIB", jamJadwal, menitJadwalFinal)
+                    
+                    ParticipantData(
+                        time = waktuFormatted,
+                        name = peserta.nama,
+                        pesertaId = peserta.id,
+                        status = InterviewStatus.PENDING,
+                        durationMinutes = 6
+                    )
+                }
+                
+                // Tambahkan ke map per tanggal
+                if (!pesertaByDate.containsKey(formattedDate)) {
+                    pesertaByDate[formattedDate] = mutableListOf()
+                }
+                pesertaByDate[formattedDate]?.addAll(participants)
+                
+                // Mark jadwal ini sudah di-merge
+                mergedJadwalIds.add(jadwal.id)
+            }
+            
+            // Merge dengan days yang sudah ada
+            pesertaByDate.forEach { (formattedDate, participants) ->
+                // Parse tanggal untuk mendapatkan nama hari
+                val dayName = parseDayName(formattedDate)
+                val lokasi = "Sekretariat BEM KM FTI" // Default lokasi
+                
+                // Cari day yang sudah ada dengan tanggal yang sama
+                val existingDayIndex = _days.indexOfFirst { 
+                    parseDateForSorting(it.date) == parseDateForSorting(formattedDate)
+                }
+                
+                if (existingDayIndex >= 0) {
+                    // Merge dengan day yang sudah ada, hanya tambahkan peserta yang belum ada
+                    val existingDay = _days[existingDayIndex]
+                    val existingPesertaIds = existingDay.participants.mapNotNull { it.pesertaId }.toSet()
+                    val newParticipants = participants.filter { 
+                        it.pesertaId == null || it.pesertaId !in existingPesertaIds 
+                    }
+                    
+                    if (newParticipants.isNotEmpty()) {
+                        val mergedParticipants = (existingDay.participants + newParticipants)
+                            .sortedBy { it.time }
+                        
+                        _days[existingDayIndex] = existingDay.copy(
+                            participants = mergedParticipants
+                        )
+                    }
+                } else {
+                    // Buat day baru
+                    val newDay = DayData(
+                        dayName = dayName,
+                        date = formattedDate,
+                        location = lokasi,
+                        participants = participants.sortedBy { it.time }
+                    )
+                    
+                    // Insert ke posisi yang tepat (sorted by date)
+                    val insertIndex = _days.indexOfFirst { 
+                        parseDateForSorting(it.date) > parseDateForSorting(formattedDate)
+                    }
+                    
+                    if (insertIndex >= 0) {
+                        _days.add(insertIndex, newDay)
+                    } else {
+                        _days.add(newDay)
+                    }
+                }
+            }
+            
+            // Re-sort days berdasarkan tanggal
+            _days.sortBy { parseDateForSorting(it.date) }
+        }
+    }
 
     /**
      * Helper function: Convert InterviewStatus enum ke string format backend

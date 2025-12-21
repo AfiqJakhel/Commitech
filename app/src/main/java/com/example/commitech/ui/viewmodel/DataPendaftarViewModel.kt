@@ -1,14 +1,17 @@
 package com.example.commitech.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.repository.DataPendaftarRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.IOException
 
 // Data class untuk UI
@@ -36,8 +39,8 @@ fun PendaftarResponse.toPendaftar(): Pendaftar {
         divisi2 = pilihanDivisi2 ?: "",
         alasan2 = alasan2 ?: "",
         krsTerakhir = krsTerakhir, // PERBAIKAN: Tambah link KRS
-        formulirPendaftaran = formulirPendaftaran, // PERBAIKAN: Tambah link Formulir
-        suratKomitmen = suratKomitmen // PERBAIKAN: Tambah link Surat Komitmen
+        formulirPendaftaran = if (formulirPendaftaran == true) "Sudah" else null, // Convert Boolean to String
+        suratKomitmen = if (suratKomitmen == true) "Sudah" else null // Convert Boolean to String
     )
 }
 
@@ -61,10 +64,10 @@ fun Pendaftar.toPendaftarResponse(): PendaftarResponse {
         formulirPendaftaran = null,
         suratKomitmen = null,
         pindahDivisi = null,
-        statusSeleksiBerkas = null, // Default null, akan di-set oleh backend
         tanggalJadwal = null,
         waktuJadwal = null,
-        lokasi = null
+        lokasi = null,
+        statusSeleksiBerkas = null
     )
 }
 
@@ -114,14 +117,14 @@ class DataPendaftarViewModel : ViewModel() {
             var lastError: String? = null
             val maxRetries = 3 // Coba maksimal 3 kali
             
-            // Gunakan search query dari state jika tidak ada parameter search
-            val searchQuery = search ?: _state.value.searchQuery.takeIf { it.isNotEmpty() }
+            // Note: Search functionality akan dihandle di backend nanti
+            // Untuk sekarang kita load semua data
             
             repeat(maxRetries) { attempt ->
                 if (success) return@repeat
                 
                 try {
-                    val response = repository.getPesertaList(token, page, 20, searchQuery)
+                    val response = repository.getPesertaList(token, page, 20)
                     
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
@@ -175,7 +178,7 @@ class DataPendaftarViewModel : ViewModel() {
                     if (attempt < maxRetries - 1) {
                         // Exponential backoff: 500ms, 1000ms, 2000ms
                         val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
-                        kotlinx.coroutines.delay(delayMs.toLong())
+                        delay(delayMs.toLong())
                     }
                 } catch (e: Exception) {
                     // Unexpected error
@@ -184,7 +187,7 @@ class DataPendaftarViewModel : ViewModel() {
                     // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
                     if (attempt < maxRetries - 1) {
                         val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
-                        kotlinx.coroutines.delay(delayMs.toLong())
+                        delay(delayMs.toLong())
                     }
                 }
             }
@@ -194,7 +197,7 @@ class DataPendaftarViewModel : ViewModel() {
                 // Jangan override import message jika ini reload setelah import
                 if (isReloadAfterImport) {
                     // Silent fail - hanya log, jangan tampilkan error
-                    android.util.Log.w("DataPendaftarViewModel", "Gagal reload list setelah import setelah $maxRetries attempts: $lastError")
+                    Log.w("DataPendaftarViewModel", "Gagal reload list setelah import setelah $maxRetries attempts: $lastError")
                 } else {
                     _state.value = _state.value.copy(
                         isLoading = false,
@@ -248,52 +251,7 @@ class DataPendaftarViewModel : ViewModel() {
         }
     }
 
-    fun editPendaftar(token: String?, pendaftarBaru: Pendaftar) {
-        if (token == null) {
-            _state.value = _state.value.copy(error = "Token tidak tersedia. Silakan login ulang.")
-            return
-        }
-        
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
-            
-            try {
-                val pendaftarResponse = pendaftarBaru.toPendaftarResponse()
-                val response = repository.updatePeserta(token, pendaftarBaru.id, pendaftarResponse)
-                
-                if (response.isSuccessful && response.body() != null) {
-                    // Update local list
-                    _pendaftarList.update { listSaatIni ->
-                        listSaatIni.map { pendaftarLama ->
-                            if (pendaftarLama.id == pendaftarBaru.id) {
-                                response.body()!!.data.toPendaftar()
-                            } else {
-                                pendaftarLama
-                            }
-                        }
-                    }
-                    _state.value = _state.value.copy(isLoading = false, error = null)
-                } else {
-                    val errorBody = try {
-                        response.errorBody()?.string()
-                    } catch (e: IOException) {
-                        null
-                    }
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        error = errorBody ?: "Gagal mengupdate data. Status: ${response.code()}"
-                    )
-                }
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(
-                    isLoading = false,
-                    error = "Terjadi kesalahan: ${e.message ?: "Unknown error"}"
-                )
-            }
-        }
-    }
-
-    fun importExcel(token: String?, file: java.io.File) {
+    fun importExcel(token: String?, file: File) {
         if (token == null) {
             _state.value = _state.value.copy(error = "Token tidak tersedia. Silakan login ulang.")
             return
@@ -345,12 +303,6 @@ class DataPendaftarViewModel : ViewModel() {
         }
     }
 
-    // Fungsi updatePendaftar untuk memicu dialog edit
-    fun updatePendaftar(pendaftar: Pendaftar) {
-        // Fungsi ini sekarang hanya berfungsi sebagai pemicu (trigger) untuk membuka Edit Dialog
-        println("TRIGGER: Membuka dialog edit untuk ${pendaftar.nama}")
-    }
-    
     /**
      * Reload list dengan loading indicator (untuk reload setelah import)
      * Dengan delay dan retry mechanism untuk ensure data muncul
@@ -361,7 +313,7 @@ class DataPendaftarViewModel : ViewModel() {
             _state.value = _state.value.copy(isReloading = true)
             
             // Delay sebelum reload untuk hindari race condition (server masih processing)
-            kotlinx.coroutines.delay(1500) // Wait 1.5 detik
+            delay(1500) // Wait 1.5 detik
             
             // Retry mechanism - coba 2 kali jika gagal
             var success = false
@@ -391,7 +343,7 @@ class DataPendaftarViewModel : ViewModel() {
                 } catch (e: Exception) {
                     // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
                     if (attempt < 1) {
-                        kotlinx.coroutines.delay(1000) // Wait 1 detik sebelum retry
+                        delay(1000) // Wait 1 detik sebelum retry
                     }
                 }
             }

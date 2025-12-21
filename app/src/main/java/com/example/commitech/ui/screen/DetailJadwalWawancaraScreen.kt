@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.example.commitech.ui.viewmodel.Jadwal
 import com.example.commitech.ui.viewmodel.JadwalViewModel
 import com.example.commitech.ui.viewmodel.Peserta
@@ -43,19 +44,37 @@ fun DetailJadwalWawancaraScreen(
     val colorScheme = MaterialTheme.colorScheme
     // Collect pesertaDiterima sebagai State untuk reactive updates
     val pesertaDiterima by seleksiBerkasViewModel.pesertaList.collectAsState()
-    val pesertaDiterimaFiltered = remember(pesertaDiterima) {
-        pesertaDiterima.filter { it.statusSeleksiBerkas == "lulus" }
-    }
     
     // Ambil peserta yang sudah dipilih untuk jadwal ini
     val pesertaTerpilih = jadwalViewModel.getPesertaByJadwalId(jadwal.id)
+    
+    // Dapatkan semua peserta yang sudah ada di jadwal lain (untuk filter)
+    val pesertaDiJadwalLain = remember(jadwal.id, jadwalViewModel.pesertaPerJadwal) {
+        jadwalViewModel.getAllPesertaNamaDiJadwalLain(jadwal.id)
+    }
+    
+    // Filter peserta yang lulus dan belum ada di jadwal lain
+    val pesertaDiterimaFiltered = remember(pesertaDiterima, pesertaDiJadwalLain) {
+        pesertaDiterima.filter { 
+            it.statusSeleksiBerkas == "lulus" && 
+            it.nama !in pesertaDiJadwalLain
+        }
+    }
     
     // State untuk dialog pemilihan peserta
     var showDialogPilihPeserta by remember { mutableStateOf(false) }
     
     // Load peserta dari database saat screen dibuka
-    LaunchedEffect(jadwal.id) {
+    LaunchedEffect(jadwal.id, jadwalViewModel.daftarJadwal.size) {
         jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
+        
+        // Load peserta dari semua jadwal untuk filter (dengan delay untuk menghindari terlalu banyak request bersamaan)
+        jadwalViewModel.daftarJadwal.forEachIndexed { index, otherJadwal ->
+            if (otherJadwal.id != jadwal.id) {
+                delay(index * 100L) // Delay 100ms per jadwal
+                jadwalViewModel.loadPesertaFromJadwal(otherJadwal.id)
+            }
+        }
         
         // Set token ke SeleksiBerkasViewModel untuk load peserta dari database
         // Pastikan hanya peserta dengan status "lulus" yang ditampilkan

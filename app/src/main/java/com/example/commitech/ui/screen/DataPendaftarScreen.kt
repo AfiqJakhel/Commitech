@@ -29,7 +29,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -511,12 +510,6 @@ fun DataPendaftarScreen(
                         pendaftar = pendaftar,
                         onDelete = { pendaftarToDelete ->
                             viewModel.deletePendaftar(authState.token, pendaftarToDelete)
-                        },
-                        onUpdate = { pendaftarToUpdate ->
-                            viewModel.updatePendaftar(pendaftarToUpdate)
-                        },
-                        onEdit = { pendaftarBaru ->
-                            viewModel.editPendaftar(authState.token, pendaftarBaru)
                         }
                     )
                 }
@@ -647,12 +640,9 @@ fun DataPendaftarScreen(
 fun PendaftarItem(
     index: Int,
     pendaftar: Pendaftar,
-    onDelete: (Pendaftar) -> Unit,
-    onUpdate: (Pendaftar) -> Unit,
-    onEdit: (Pendaftar) -> Unit
+    onDelete: (Pendaftar) -> Unit
 ) {
     var showDetailDialog by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     val animatedBorderColor by animateColorAsState(
@@ -723,16 +713,6 @@ fun PendaftarItem(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Tombol Edit
-                CircleIconButton(
-                    icon = Icons.Default.Edit,
-                    background = Color(0xFFF3E5F5),
-                    tint = Color(0xFF4A148C),
-                    enabled = true
-                ) {
-                    showEditDialog = true
-                }
-
                 // Tombol Delete
                 CircleIconButton(
                     icon = Icons.Default.Delete,
@@ -754,20 +734,7 @@ fun PendaftarItem(
             onDelete = {
                 onDelete(pendaftar)
                 showDetailDialog = false
-            },
-            onUpdate = {
-                showDetailDialog = false
-                showEditDialog = true
             }
-        )
-    }
-
-    // Dialog Edit Pendaftar
-    if (showEditDialog) {
-        EditPendaftarDialog(
-            pendaftar = pendaftar,
-            onDismiss = { showEditDialog = false },
-            onSave = onEdit
         )
     }
     
@@ -788,8 +755,7 @@ fun PendaftarItem(
 fun DetailPendaftarDialog(
     pendaftar: Pendaftar,
     onDismiss: () -> Unit,
-    onDelete: () -> Unit,
-    onUpdate: () -> Unit
+    onDelete: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -882,341 +848,28 @@ fun DetailPendaftarDialog(
                     link = pendaftar.suratKomitmen
                 )
 
-                // Tombol Update & Delete
+                // Tombol Delete
                 Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.error // Warna merah
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Tombol Update (PERBAIKAN: Spacer dikurangi menjadi 4.dp)
-                    Button(
-                        onClick = onUpdate,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF57C00) // Warna oranye
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Update",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp)) // <-- PERBAIKAN DI SINI
-                            Text(
-                                "Update",
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    // Tombol Delete (PERBAIKAN: Spacer dikurangi menjadi 4.dp)
-                    Button(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.error // Warna merah
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Hapus",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp)) // <-- PERBAIKAN DI SINI
-                            Text(
-                                "Hapus",
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EditPendaftarDialog(
-    pendaftar: Pendaftar,
-    onDismiss: () -> Unit,
-    onSave: (Pendaftar) -> Unit
-) {
-    var nama by remember { mutableStateOf(pendaftar.nama) }
-    var nim by remember { mutableStateOf(pendaftar.nim) }
-    var divisi1 by remember { mutableStateOf(pendaftar.divisi1) }
-    var alasan1 by remember { mutableStateOf(pendaftar.alasan1) }
-    var divisi2 by remember { mutableStateOf(pendaftar.divisi2) }
-    var alasan2 by remember { mutableStateOf(pendaftar.alasan2) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp)
-                .shadow(8.dp, RoundedCornerShape(24.dp)),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Header dengan gradient
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    colorScheme.primary,
-                                    colorScheme.primary.copy(alpha = 0.8f)
-                                )
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Hapus",
+                            modifier = Modifier.size(20.dp)
                         )
-                        .padding(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Edit Pendaftar",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            "Hapus Data",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
                         )
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                }
-
-                // Form Content
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Nama Field
-                    OutlinedTextField(
-                        value = nama,
-                        onValueChange = { nama = it },
-                        label = { 
-                            Text(
-                                "Nama",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    // NIM Field
-                    OutlinedTextField(
-                        value = nim,
-                        onValueChange = { nim = it },
-                        label = { 
-                            Text(
-                                "NIM",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    // Divider
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Pilihan Divisi",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.primary
-                    )
-
-                    // Divisi 1 Field
-                    OutlinedTextField(
-                        value = divisi1,
-                        onValueChange = { divisi1 = it },
-                        label = { 
-                            Text(
-                                "Pilihan Divisi 1",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    // Alasan Divisi 1
-                    OutlinedTextField(
-                        value = alasan1,
-                        onValueChange = { alasan1 = it },
-                        label = { 
-                            Text(
-                                "Alasan Divisi 1",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Divisi 2 Field
-                    OutlinedTextField(
-                        value = divisi2,
-                        onValueChange = { divisi2 = it },
-                        label = { 
-                            Text(
-                                "Pilihan Divisi 2",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    // Alasan Divisi 2
-                    OutlinedTextField(
-                        value = alasan2,
-                        onValueChange = { alasan2 = it },
-                        label = { 
-                            Text(
-                                "Alasan Divisi 2",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            ) 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colorScheme.primary,
-                            unfocusedBorderColor = colorScheme.onSurface.copy(alpha = 0.3f),
-                            focusedLabelColor = colorScheme.primary
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Action Buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Tombol Batal
-                        Button(
-                            onClick = onDismiss,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.surface,
-                                contentColor = colorScheme.onSurface
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.3f))
-                        ) {
-                            Text(
-                                "Batal",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        // Tombol Simpan
-                        Button(
-                            onClick = {
-                                val pendaftarBaru = pendaftar.copy(
-                                    id = pendaftar.id,
-                                    nama = nama,
-                                    nim = nim,
-                                    divisi1 = divisi1,
-                                    alasan1 = alasan1,
-                                    divisi2 = divisi2,
-                                    alasan2 = alasan2
-                                )
-                                onSave(pendaftarBaru)
-                                onDismiss()
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Text(
-                                    "Simpan",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
                 }
             }

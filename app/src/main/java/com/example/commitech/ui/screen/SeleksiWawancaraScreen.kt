@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -199,6 +201,9 @@ fun SeleksiWawancaraScreen(
             // Kita SELALU load data saat token berubah
             // Ini memastikan data selalu fresh dan tidak ada race condition
             viewModel.loadJadwalWawancaraFromDatabase(token)
+            viewModel.loadPesertaLulusTanpaJadwal(token)
+            // Load jadwal rekrutmen juga
+            jadwalViewModel?.setAuthToken(token)
         }
     }
 
@@ -550,6 +555,23 @@ fun WawancaraJadwalContent(
     val colorScheme = MaterialTheme.colorScheme
     val daftarJadwal = jadwalViewModel?.daftarJadwal ?: emptyList()
     
+    // Collect state untuk peserta lulus tanpa jadwal
+    val pesertaLulusTanpaJadwal = viewModel.pesertaLulusTanpaJadwal
+    val isLoadingPesertaLulus by viewModel.isLoadingPesertaLulus.collectAsState()
+    
+    // Load peserta dari setiap jadwal saat jadwal ditampilkan (dengan delay untuk menghindari terlalu banyak request bersamaan)
+    LaunchedEffect(authState.token, daftarJadwal) {
+        authState.token?.let { token ->
+            if (daftarJadwal.isNotEmpty()) {
+                // Load dengan sedikit delay antara setiap jadwal untuk menghindari terlalu banyak request bersamaan
+                daftarJadwal.forEachIndexed { index, jadwal ->
+                    kotlinx.coroutines.delay(index * 100L) // Delay 100ms per jadwal
+                    jadwalViewModel?.loadPesertaFromJadwal(jadwal.id)
+                }
+            }
+        }
+    }
+    
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -572,6 +594,9 @@ fun WawancaraJadwalContent(
                 JadwalRekrutmenCard(
                     jadwal = jadwal,
                     jadwalViewModel = jadwalViewModel,
+                    viewModel = viewModel,
+                    authState = authState,
+                    pesertaLulusTanpaJadwal = emptyList(), // Tidak digunakan lagi
                     onClick = {
                         navController?.navigate("detailJadwalWawancara/${jadwal.id}")
                     }
@@ -604,93 +629,152 @@ fun WawancaraJadwalContent(
 }
 
 @Composable
+fun PesertaTanpaJadwalCard(
+    peserta: com.example.commitech.data.model.PendaftarResponse,
+    colorScheme: androidx.compose.material3.ColorScheme
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = peserta.nama ?: "Nama tidak diketahui",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
+                )
+                if (!peserta.nim.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "NIM: ${peserta.nim}",
+                        fontSize = 13.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF4CAF50).copy(alpha = 0.15f)
+            ) {
+                Text(
+                    text = "Lulus Berkas",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF2E7D32),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun JadwalRekrutmenCard(
     jadwal: com.example.commitech.ui.viewmodel.Jadwal,
     jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel?,
+    viewModel: SeleksiWawancaraViewModel,
+    authState: com.example.commitech.ui.viewmodel.AuthState,
+    pesertaLulusTanpaJadwal: List<com.example.commitech.data.model.PendaftarResponse>,
     onClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val jumlahPeserta = jadwalViewModel?.getPesertaByJadwalId(jadwal.id)?.size ?: 0
+    val isJadwalFull = jumlahPeserta >= 5
     
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
             .shadow(6.dp, RoundedCornerShape(18.dp)),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = colorScheme.surface
         )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = jadwal.judul,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    color = colorScheme.onSurface
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "Pewawancara: ${jadwal.pewawancara}",
-                        fontSize = 14.sp,
-                        color = colorScheme.onSurface.copy(alpha = 0.8f),
+                        text = jadwal.judul,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Pewawancara: ${jadwal.pewawancara}",
+                            fontSize = 14.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${jadwal.tanggalMulai} - ${jadwal.tanggalSelesai}",
+                        fontSize = 13.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f),
                         fontWeight = FontWeight.Medium
                     )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "${jadwal.tanggalMulai} - ${jadwal.tanggalSelesai}",
-                    fontSize = 13.sp,
-                    color = colorScheme.onSurface.copy(alpha = 0.7f),
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
-                    fontSize = 13.sp,
-                    color = Color(0xFF9C27B0),
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = colorScheme.primary.copy(alpha = 0.1f)
-                ) {
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "$jumlahPeserta/5 peserta",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = "${jadwal.waktuMulai} - ${jadwal.waktuSelesai}",
+                        fontSize = 13.sp,
+                        color = Color(0xFF9C27B0),
+                        fontWeight = FontWeight.SemiBold
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isJadwalFull) Color(0xFFD32F2F).copy(alpha = 0.1f) else colorScheme.primary.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            text = "$jumlahPeserta/5 peserta",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isJadwalFull) Color(0xFFD32F2F) else colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
+                
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Detail",
+                    tint = colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
-            
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = "Detail",
-                tint = colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
         }
     }
 }
@@ -1908,6 +1992,230 @@ fun AcceptDialog(
     }
 }
 
+@Composable
+fun AddPesertaToJadwalDialog(
+    jadwal: com.example.commitech.ui.viewmodel.Jadwal,
+    jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel?,
+    pesertaLulusTanpaJadwal: List<com.example.commitech.data.model.PendaftarResponse>,
+    jumlahPesertaSaatIni: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (List<Int>) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val maxPeserta = 5
+    val sisaSlot = maxPeserta - jumlahPesertaSaatIni
+    var selectedPesertaIds by remember { mutableStateOf(setOf<Int>()) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .padding(horizontal = 16.dp, vertical = 40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxSize(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                ) {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Tambah Peserta ke Jadwal",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = jadwal.judul,
+                                fontSize = 14.sp,
+                                color = colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (sisaSlot > 0) colorScheme.primary.copy(alpha = 0.1f) else Color(
+                                    0xFFD32F2F
+                                ).copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "Sisa slot: $sisaSlot (Maks: $maxPeserta)",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (sisaSlot > 0) colorScheme.primary else Color(
+                                        0xFFD32F2F
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        thickness = 1.dp,
+                        color = colorScheme.onSurface.copy(alpha = 0.1f)
+                    )
+
+                    // List peserta dengan checkbox
+                    if (pesertaLulusTanpaJadwal.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Tidak ada peserta yang bisa ditambahkan",
+                                fontSize = 14.sp,
+                                color = colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(pesertaLulusTanpaJadwal) { peserta ->
+                                val isSelected = selectedPesertaIds.contains(peserta.id)
+                                val canSelect = selectedPesertaIds.size < sisaSlot || isSelected
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable(enabled = canSelect) {
+                                            if (isSelected) {
+                                                selectedPesertaIds = selectedPesertaIds - peserta.id
+                                            } else if (selectedPesertaIds.size < sisaSlot) {
+                                                selectedPesertaIds = selectedPesertaIds + peserta.id
+                                            }
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected)
+                                            colorScheme.primary.copy(alpha = 0.1f)
+                                        else
+                                            colorScheme.surfaceVariant
+                                    ),
+                                    border = if (isSelected)
+                                        BorderStroke(2.dp, colorScheme.primary)
+                                    else null
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = peserta.nama ?: "Nama tidak diketahui",
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colorScheme.onSurface
+                                            )
+                                            if (!peserta.nim.isNullOrBlank()) {
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = "NIM: ${peserta.nim}",
+                                                    fontSize = 13.sp,
+                                                    color = colorScheme.onSurface.copy(alpha = 0.7f)
+                                                )
+                                            }
+                                        }
+                                        Checkbox(
+                                            checked = isSelected,
+                                            onCheckedChange = { checked ->
+                                                if (checked && selectedPesertaIds.size < sisaSlot) {
+                                                    selectedPesertaIds =
+                                                        selectedPesertaIds + peserta.id
+                                                } else if (!checked) {
+                                                    selectedPesertaIds =
+                                                        selectedPesertaIds - peserta.id
+                                                }
+                                            },
+                                            enabled = canSelect
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Batal")
+                        }
+
+                        Button(
+                            onClick = {
+                                onConfirm(selectedPesertaIds.toList())
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = selectedPesertaIds.isNotEmpty(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorScheme.primary,
+                                disabledContainerColor = Color(0xFFE0E0E0)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Tambah (${selectedPesertaIds.size})",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun formatRemainingTime(totalSeconds: Int): String {
     val clamped = totalSeconds.coerceAtLeast(0)
     val minutes = clamped / 60
@@ -1928,7 +2236,12 @@ private fun triggerWarningVibration(context: Context) {
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val pattern = longArrayOf(0, 400, 120, 400)
-        val amplitudes = intArrayOf(0, VibrationEffect.DEFAULT_AMPLITUDE, 0, VibrationEffect.DEFAULT_AMPLITUDE)
+        val amplitudes = intArrayOf(
+            0,
+            VibrationEffect.DEFAULT_AMPLITUDE,
+            0,
+            VibrationEffect.DEFAULT_AMPLITUDE
+        )
         val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
         vibrator.vibrate(effect)
     } else {

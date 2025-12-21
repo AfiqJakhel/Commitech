@@ -19,10 +19,9 @@ class DataPendaftarRepository {
     suspend fun getPesertaList(
         token: String,
         page: Int = 1,
-        perPage: Int = 20,
-        search: String? = null
+        perPage: Int = 20
     ): Response<PendaftarListResponse> {
-        return apiService.getPesertaList("Bearer $token", page, perPage, search)
+        return apiService.getPesertaList("Bearer $token", page, perPage)
     }
     
     suspend fun getPesertaById(token: String, id: Int): Response<PendaftarSingleResponse> {
@@ -53,6 +52,10 @@ class DataPendaftarRepository {
         request: UpdateStatusSeleksiBerkasRequest
     ): Response<PendaftarSingleResponse> {
         return apiService.updateStatusSeleksiBerkas("Bearer $token", id, request)
+    }
+    
+    suspend fun getPesertaLulusTanpaJadwal(token: String): Response<PendaftarListResponse> {
+        return apiService.getPesertaLulusTanpaJadwal("Bearer $token")
     }
 }
 
