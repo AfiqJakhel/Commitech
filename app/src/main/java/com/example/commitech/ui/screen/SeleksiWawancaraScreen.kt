@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -49,7 +48,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -103,7 +101,6 @@ import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.data.model.HasilWawancaraResponse
-import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.collectAsState
 import android.app.TimePickerDialog
 import androidx.compose.material.icons.filled.Schedule
@@ -607,66 +604,6 @@ fun WawancaraJadwalContent(
                 )
             }
 
-        }
-
-        // Jadwal peserta (existing)
-        items(viewModel.days.size) { index ->
-            ExpandableDayCard(
-                viewModel = viewModel,
-                dayIndex = index,
-                authState = authState
-            )
-        }
-    }
-}
-
-@Composable
-fun PesertaTanpaJadwalCard(
-    peserta: com.example.commitech.data.model.PendaftarResponse,
-    colorScheme: androidx.compose.material3.ColorScheme
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = peserta.nama ?: "Nama tidak diketahui",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
-                )
-                if (!peserta.nim.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "NIM: ${peserta.nim}",
-                        fontSize = 13.sp,
-                        color = colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-            }
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF4CAF50).copy(alpha = 0.15f)
-            ) {
-                Text(
-                    text = "Lulus Berkas",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF2E7D32),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
         }
     }
 }
@@ -2161,230 +2098,6 @@ fun AcceptDialog(
                             "Terima",
                             fontWeight = FontWeight.Bold
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AddPesertaToJadwalDialog(
-    jadwal: com.example.commitech.ui.viewmodel.Jadwal,
-    jadwalViewModel: com.example.commitech.ui.viewmodel.JadwalViewModel?,
-    pesertaLulusTanpaJadwal: List<com.example.commitech.data.model.PendaftarResponse>,
-    jumlahPesertaSaatIni: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (List<Int>) -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val maxPeserta = 5
-    val sisaSlot = maxPeserta - jumlahPesertaSaatIni
-    var selectedPesertaIds by remember { mutableStateOf(setOf<Int>()) }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f))
-                .padding(horizontal = 16.dp, vertical = 40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxSize(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                ) {
-                    // Header
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Tambah Peserta ke Jadwal",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = jadwal.judul,
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (sisaSlot > 0) colorScheme.primary.copy(alpha = 0.1f) else Color(
-                                    0xFFD32F2F
-                                ).copy(alpha = 0.1f)
-                            ) {
-                                Text(
-                                    text = "Sisa slot: $sisaSlot (Maks: $maxPeserta)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (sisaSlot > 0) colorScheme.primary else Color(
-                                        0xFFD32F2F
-                                    ),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        thickness = 1.dp,
-                        color = colorScheme.onSurface.copy(alpha = 0.1f)
-                    )
-
-                    // List peserta dengan checkbox
-                    if (pesertaLulusTanpaJadwal.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Tidak ada peserta yang bisa ditambahkan",
-                                fontSize = 14.sp,
-                                color = colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            items(pesertaLulusTanpaJadwal) { peserta ->
-                                val isSelected = selectedPesertaIds.contains(peserta.id)
-                                val canSelect = selectedPesertaIds.size < sisaSlot || isSelected
-
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickable(enabled = canSelect) {
-                                            if (isSelected) {
-                                                selectedPesertaIds = selectedPesertaIds - peserta.id
-                                            } else if (selectedPesertaIds.size < sisaSlot) {
-                                                selectedPesertaIds = selectedPesertaIds + peserta.id
-                                            }
-                                        },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected)
-                                            colorScheme.primary.copy(alpha = 0.1f)
-                                        else
-                                            colorScheme.surfaceVariant
-                                    ),
-                                    border = if (isSelected)
-                                        BorderStroke(2.dp, colorScheme.primary)
-                                    else null
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = peserta.nama ?: "Nama tidak diketahui",
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = colorScheme.onSurface
-                                            )
-                                            if (!peserta.nim.isNullOrBlank()) {
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = "NIM: ${peserta.nim}",
-                                                    fontSize = 13.sp,
-                                                    color = colorScheme.onSurface.copy(alpha = 0.7f)
-                                                )
-                                            }
-                                        }
-                                        Checkbox(
-                                            checked = isSelected,
-                                            onCheckedChange = { checked ->
-                                                if (checked && selectedPesertaIds.size < sisaSlot) {
-                                                    selectedPesertaIds =
-                                                        selectedPesertaIds + peserta.id
-                                                } else if (!checked) {
-                                                    selectedPesertaIds =
-                                                        selectedPesertaIds - peserta.id
-                                                }
-                                            },
-                                            enabled = canSelect
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Action buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Batal")
-                        }
-
-                        Button(
-                            onClick = {
-                                onConfirm(selectedPesertaIds.toList())
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = selectedPesertaIds.isNotEmpty(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorScheme.primary,
-                                disabledContainerColor = Color(0xFFE0E0E0)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "Tambah (${selectedPesertaIds.size})",
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
                 }
             }

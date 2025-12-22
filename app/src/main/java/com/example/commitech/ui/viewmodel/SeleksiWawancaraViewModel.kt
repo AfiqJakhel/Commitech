@@ -528,6 +528,16 @@ class SeleksiWawancaraViewModel : ViewModel() {
     }
     
     /**
+     * Mendapatkan hasil wawancara berdasarkan pesertaId
+     * 
+     * @param pesertaId ID peserta
+     * @return HasilWawancaraResponse jika ditemukan, null jika tidak
+     */
+    fun getHasilWawancaraByPesertaId(pesertaId: Int): com.example.commitech.data.model.HasilWawancaraResponse? {
+        return hasilWawancaraMap[pesertaId]
+    }
+    
+    /**
      * Merge peserta dari jadwal rekrutmen ke dalam days
      * Fungsi ini akan mengkonversi peserta dari JadwalViewModel ke format DayData dan ParticipantData
      * 

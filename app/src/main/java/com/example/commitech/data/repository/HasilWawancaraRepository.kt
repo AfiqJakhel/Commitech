@@ -69,5 +69,40 @@ class HasilWawancaraRepository {
     ): Response<HasilWawancaraListResponse> {
         return apiService.getHasilWawancara("Bearer $token")
     }
+    
+    /**
+     * Mengubah hasil wawancara yang sudah ada di backend via API
+     * 
+     * Fitur: Modul 4 - Fitur 17: Ubah Hasil Wawancara (Update)
+     * 
+     * @param token Token autentikasi dari AuthViewModel (tanpa prefix "Bearer")
+     * @param id ID hasil wawancara yang akan diubah
+     * @param request Request body yang berisi data hasil wawancara yang baru
+     * @return Response dari backend yang berisi HasilWawancaraSingleResponse
+     * 
+     * Example:
+     * ```
+     * val request = HasilWawancaraRequest(
+     *     pesertaId = 1,
+     *     status = "diterima",
+     *     divisi = "Humas",
+     *     alasan = null
+     * )
+     * val response = repository.ubahHasilWawancara("your_token_here", hasilWawancaraId, request)
+     * ```
+     * 
+     * Error Handling:
+     * - 401: Unauthorized (token expired/invalid) - perlu re-login
+     * - 404: Not Found (hasil wawancara tidak ditemukan)
+     * - 422: Validation Error (field tidak valid)
+     * - 500: Server Error
+     */
+    suspend fun ubahHasilWawancara(
+        token: String,
+        id: Int,
+        request: HasilWawancaraRequest
+    ): Response<HasilWawancaraSingleResponse> {
+        return apiService.ubahHasilWawancara("Bearer $token", id, request)
+    }
 }
 

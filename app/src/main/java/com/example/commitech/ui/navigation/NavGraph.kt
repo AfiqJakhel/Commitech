@@ -317,7 +317,8 @@ fun AppNavGraph(
                 navController = navController,
                 namaPeserta = namaPeserta,
                 viewModel = pengumumanViewModel,
-                seleksiViewModel = seleksiWawancaraViewModel
+                seleksiViewModel = seleksiWawancaraViewModel,
+                token = authViewModel.authState.value.token
             )
         }
 
