@@ -123,6 +123,9 @@ class SeleksiWawancaraViewModel : ViewModel() {
     
     private val _jadwalError = MutableStateFlow<String?>(null)
     val jadwalError: StateFlow<String?> = _jadwalError.asStateFlow()
+    
+    // Flag untuk track apakah data sudah pernah di-load
+    private var isJadwalLoaded = false
 
     private val activeInterviewJobs = mutableMapOf<String, Job>()
     private val scheduledReminderKeys = mutableSetOf<String>()
@@ -149,6 +152,24 @@ class SeleksiWawancaraViewModel : ViewModel() {
     
     private val _pesertaLulusError = MutableStateFlow<String?>(null)
     val pesertaLulusError: StateFlow<String?> = _pesertaLulusError.asStateFlow()
+
+    private val _pesertaLulusCount = MutableStateFlow(0)
+    val pesertaLulusCount: StateFlow<Int> = _pesertaLulusCount.asStateFlow()
+
+    private val _isLoadingPesertaLulusCount = MutableStateFlow(false)
+    val isLoadingPesertaLulusCount: StateFlow<Boolean> = _isLoadingPesertaLulusCount.asStateFlow()
+
+    private val _pesertaLulusCountError = MutableStateFlow<String?>(null)
+    val pesertaLulusCountError: StateFlow<String?> = _pesertaLulusCountError.asStateFlow()
+
+    private val _pesertaPendingWawancara = MutableStateFlow<List<PendaftarResponse>>(emptyList())
+    val pesertaPendingWawancara: StateFlow<List<PendaftarResponse>> = _pesertaPendingWawancara.asStateFlow()
+
+    private val _isLoadingPesertaPendingWawancara = MutableStateFlow(false)
+    val isLoadingPesertaPendingWawancara: StateFlow<Boolean> = _isLoadingPesertaPendingWawancara.asStateFlow()
+
+    private val _pesertaPendingWawancaraError = MutableStateFlow<String?>(null)
+    val pesertaPendingWawancaraError: StateFlow<String?> = _pesertaPendingWawancaraError.asStateFlow()
 
     init {
         // Init kosong - data akan di-load dari database saat screen dibuka
@@ -188,6 +209,66 @@ class SeleksiWawancaraViewModel : ViewModel() {
             }
         }
     }
+
+    fun loadPesertaPendingWawancara(token: String?) {
+        if (token == null) {
+            _pesertaPendingWawancaraError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoadingPesertaPendingWawancara.value = true
+            _pesertaPendingWawancaraError.value = null
+
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    dataPendaftarRepository.getPesertaPendingWawancara(token)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    _pesertaPendingWawancara.value = body.data
+                    _isLoadingPesertaPendingWawancara.value = false
+                } else {
+                    _pesertaPendingWawancaraError.value = "Gagal memuat peserta pending wawancara. Status: ${response.code()}"
+                    _isLoadingPesertaPendingWawancara.value = false
+                }
+            } catch (e: Exception) {
+                _pesertaPendingWawancaraError.value = "Error: ${e.message}"
+                _isLoadingPesertaPendingWawancara.value = false
+            }
+        }
+    }
+
+    fun loadCountPesertaLulus(token: String?) {
+        if (token == null) {
+            _pesertaLulusCountError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoadingPesertaLulusCount.value = true
+            _pesertaLulusCountError.value = null
+
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    dataPendaftarRepository.getCountPesertaLulus(token)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    _pesertaLulusCount.value = body.data.count
+                    _isLoadingPesertaLulusCount.value = false
+                } else {
+                    _pesertaLulusCountError.value = "Gagal memuat jumlah peserta lulus. Status: ${response.code()}"
+                    _isLoadingPesertaLulusCount.value = false
+                }
+            } catch (e: Exception) {
+                _pesertaLulusCountError.value = "Error: ${e.message}"
+                _isLoadingPesertaLulusCount.value = false
+            }
+        }
+    }
     
     /**
      * Load jadwal wawancara dari database
@@ -199,9 +280,14 @@ class SeleksiWawancaraViewModel : ViewModel() {
      * 
      * @param token Token autentikasi untuk API call
      */
-    fun loadJadwalWawancaraFromDatabase(token: String?) {
+    fun loadJadwalWawancaraFromDatabase(token: String?, forceReload: Boolean = false) {
         if (token == null) {
             _jadwalError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+        
+        // Jika data sudah pernah di-load dan tidak force reload, skip
+        if (isJadwalLoaded && !forceReload && _days.isNotEmpty()) {
             return
         }
         
@@ -236,13 +322,26 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     }
                 }
                 
-                // Filter peserta yang memiliki jadwal (tanggal_jadwal tidak null)
-                val pesertaDenganJadwal = allPeserta.filter { 
-                    it.tanggalJadwal != null && it.tanggalJadwal.isNotBlank()
+                // Load hasil wawancara dari database terlebih dahulu
+                // Ini penting untuk memfilter peserta yang sudah diterima/ditolak
+                // WAIT untuk memastikan data sudah ter-load sebelum filter
+                loadHasilWawancaraAndUpdateStatusInternal(token)
+                
+                // Pastikan hasilWawancaraMap sudah terisi sebelum filter
+                // Tunggu sebentar jika map masih kosong (untuk handle race condition)
+                var retryCount = 0
+                while (hasilWawancaraMap.isEmpty() && retryCount < 3) {
+                    kotlinx.coroutines.delay(100)
+                    retryCount++
                 }
                 
-                // Load hasil wawancara dari database terlebih dahulu
-                loadHasilWawancaraAndUpdateStatusInternal(token)
+                // Filter peserta yang memiliki jadwal (tanggal_jadwal tidak null)
+                // TAMPILKAN SEMUA peserta yang punya jadwal, termasuk yang sudah diterima/ditolak
+                // Status akan ditampilkan di card peserta
+                val pesertaDenganJadwal = allPeserta.filter { peserta ->
+                    val hasJadwal = peserta.tanggalJadwal != null && peserta.tanggalJadwal.isNotBlank()
+                    hasJadwal
+                }
                 
                 // Group peserta berdasarkan tanggal_jadwal
                 val groupedByDate = pesertaDenganJadwal.groupBy { it.tanggalJadwal!! }
@@ -268,11 +367,17 @@ class SeleksiWawancaraViewModel : ViewModel() {
                             "$waktuJadwal WIB"
                         }
                         
-                        // Cek status dari hasil wawancara jika ada
+                        // Cek status dari status_wawancara di tabel peserta (prioritas utama)
+                        // Jika tidak ada, cek dari hasil wawancara sebagai fallback
+                        val statusWawancara = peserta.statusWawancara?.lowercase() ?: "pending"
                         val hasilWawancara = hasilWawancaraMap[peserta.id]
-                        val status = when (hasilWawancara?.status) {
-                            "diterima" -> InterviewStatus.ACCEPTED
-                            "ditolak" -> InterviewStatus.REJECTED
+                        
+                        // Gunakan status_wawancara dari peserta jika ada, jika tidak gunakan dari hasil_wawancara
+                        val status = when {
+                            statusWawancara == "diterima" -> InterviewStatus.ACCEPTED
+                            statusWawancara == "ditolak" -> InterviewStatus.REJECTED
+                            hasilWawancara?.status == "diterima" -> InterviewStatus.ACCEPTED
+                            hasilWawancara?.status == "ditolak" -> InterviewStatus.REJECTED
                             else -> InterviewStatus.PENDING
                         }
                         
@@ -302,6 +407,8 @@ class SeleksiWawancaraViewModel : ViewModel() {
                 _days.clear()
                 _days.addAll(dayDataList)
                 
+                // Mark sebagai sudah di-load
+                isJadwalLoaded = true
                 _isLoadingJadwal.value = false
             } catch (e: IOException) {
                 _jadwalError.value = "Tidak dapat terhubung ke server. Pastikan server berjalan."
@@ -316,17 +423,20 @@ class SeleksiWawancaraViewModel : ViewModel() {
     /**
      * Load hasil wawancara dari database dan update status peserta
      * Fungsi ini bisa dipanggil dari luar untuk refresh data
+     * 
+     * @param token Token autentikasi
+     * @param forceReload Force reload meskipun sudah pernah load (default: false)
      */
-    fun loadHasilWawancaraAndUpdateStatus(token: String) {
+    fun loadHasilWawancaraAndUpdateStatus(token: String, forceReload: Boolean = false) {
         viewModelScope.launch {
-            loadHasilWawancaraAndUpdateStatusInternal(token)
+            loadHasilWawancaraAndUpdateStatusInternal(token, forceReload)
         }
     }
     
     /**
      * Internal function untuk load hasil wawancara
      */
-    private suspend fun loadHasilWawancaraAndUpdateStatusInternal(token: String) {
+    private suspend fun loadHasilWawancaraAndUpdateStatusInternal(token: String, forceReload: Boolean = false) {
         try {
             val response = hasilWawancaraRepository.getHasilWawancara(token)
             
@@ -342,7 +452,7 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     // Update StateFlow untuk tab Status (langsung dari database)
                     _hasilWawancaraList.value = body.data
                     
-                    // Update status peserta di days
+                    // Update status peserta di days (semua peserta tetap ditampilkan dengan status terbaru)
                     _days.forEachIndexed { dayIndex, day ->
                         val updatedParticipants = day.participants.map { participant ->
                             val hasil = hasilWawancaraMap[participant.pesertaId]
@@ -358,6 +468,7 @@ class SeleksiWawancaraViewModel : ViewModel() {
                                     reason = hasil.alasan ?: ""
                                 )
                             } else {
+                                // Jika belum ada hasil wawancara, tetap tampilkan sebagai PENDING
                                 participant
                             }
                         }
@@ -570,19 +681,36 @@ class SeleksiWawancaraViewModel : ViewModel() {
                 val jamMulai = waktuMulaiParts.firstOrNull()?.toIntOrNull() ?: 9
                 val menitMulai = waktuMulaiParts.getOrNull(1)?.toIntOrNull() ?: 0
                 
+                // Filter peserta yang belum ada hasil wawancara dengan status diterima/ditolak
+                val pesertaFiltered = pesertaList.filter { peserta ->
+                    val hasilWawancara = hasilWawancaraMap[peserta.id]
+                    val sudahFinal = hasilWawancara?.status == "diterima" || hasilWawancara?.status == "ditolak"
+                    !sudahFinal
+                }
+                
                 // Konversi peserta ke ParticipantData dengan waktu yang benar per jadwal
-                val participants = pesertaList.mapIndexed { index, peserta ->
+                val participants = pesertaFiltered.mapIndexed { index, peserta ->
                     // Hitung waktu untuk peserta ini (setiap 6 menit dari waktu mulai jadwal)
                     val menitJadwal = menitMulai + (index * 6)
                     val jamJadwal = jamMulai + (menitJadwal / 60)
                     val menitJadwalFinal = menitJadwal % 60
                     val waktuFormatted = String.format("%02d.%02d WIB", jamJadwal, menitJadwalFinal)
                     
+                    // Cek status dari hasil wawancara jika ada
+                    val hasilWawancara = hasilWawancaraMap[peserta.id]
+                    val status = when (hasilWawancara?.status) {
+                        "diterima" -> InterviewStatus.ACCEPTED
+                        "ditolak" -> InterviewStatus.REJECTED
+                        else -> InterviewStatus.PENDING
+                    }
+                    
                     ParticipantData(
                         time = waktuFormatted,
                         name = peserta.nama,
                         pesertaId = peserta.id,
-                        status = InterviewStatus.PENDING,
+                        status = status,
+                        division = hasilWawancara?.divisi ?: "",
+                        reason = hasilWawancara?.alasan ?: "",
                         durationMinutes = 6
                     )
                 }
@@ -722,7 +850,10 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     val responseBody = response.body()!!
                     
                     if (responseBody.sukses && responseBody.data != null) {
-                        // Success: Update local state
+                        // Refresh hasil wawancara dari database untuk mendapatkan data terbaru
+                        loadHasilWawancaraAndUpdateStatusInternal(token)
+                        
+                        // Success: Update local state (peserta tetap di jadwal dengan status REJECTED)
                         mutateParticipant(dayIndex, index) { current ->
                             current.copy(
                                 status = InterviewStatus.REJECTED,
@@ -828,7 +959,10 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     val responseBody = response.body()!!
                     
                     if (responseBody.sukses && responseBody.data != null) {
-                        // Success: Update local state
+                        // Refresh hasil wawancara dari database untuk mendapatkan data terbaru
+                        loadHasilWawancaraAndUpdateStatusInternal(token)
+                        
+                        // Success: Update local state (peserta tetap di jadwal dengan status ACCEPTED)
                         mutateParticipant(dayIndex, index) { current ->
                             current.copy(
                                 status = InterviewStatus.ACCEPTED,

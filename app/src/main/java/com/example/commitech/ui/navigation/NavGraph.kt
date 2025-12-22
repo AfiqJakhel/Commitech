@@ -299,7 +299,8 @@ fun AppNavGraph(
             PengumumanScreen(
                 navController = navController,
                 viewModel = pengumumanViewModel,
-                seleksiViewModel = seleksiWawancaraViewModel
+                seleksiViewModel = seleksiWawancaraViewModel,
+                authViewModel = authViewModel
             )
         }
 

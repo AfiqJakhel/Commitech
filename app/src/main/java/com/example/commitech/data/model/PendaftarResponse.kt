@@ -80,7 +80,9 @@ data class PendaftarResponse(
     @SerializedName("lokasi")
     val lokasi: String?,
     @SerializedName("status_seleksi_berkas")
-    val statusSeleksiBerkas: String?
+    val statusSeleksiBerkas: String?,
+    @SerializedName("status_wawancara")
+    val statusWawancara: String? // pending, diterima, ditolak
 )
 
 data class PendaftarListResponse(
@@ -118,6 +120,20 @@ data class PendaftarSingleResponse(
     val message: String,
     @SerializedName("data")
     val data: PendaftarResponse
+)
+
+data class PesertaLulusCountData(
+    @SerializedName("count")
+    val count: Int
+)
+
+data class PesertaLulusCountResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("data")
+    val data: PesertaLulusCountData
 )
 
 data class ImportExcelResponse(

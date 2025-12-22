@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.repository.HasilWawancaraRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class InterviewStatus {
     PENDING,
@@ -38,6 +41,12 @@ class PengumumanViewModel : ViewModel() {
     val daftarDivisi: List<DivisiData> get() = _daftarDivisi
     
     private val hasilWawancaraRepository = HasilWawancaraRepository()
+    
+    private val _isLoadingFromDatabase = MutableStateFlow(false)
+    val isLoadingFromDatabase: StateFlow<Boolean> = _isLoadingFromDatabase.asStateFlow()
+    
+    private val _loadError = MutableStateFlow<String?>(null)
+    val loadError: StateFlow<String?> = _loadError.asStateFlow()
 
     fun getKoordinator(divisi: String): String {
         return _daftarDivisi.find { it.namaDivisi == divisi }?.koordinator ?: "-"
@@ -49,7 +58,63 @@ class PengumumanViewModel : ViewModel() {
 
     fun getAllDivisiNames(): List<String> = _daftarDivisi.map { it.namaDivisi }
 
-    // Sinkronisasi data dari SeleksiWawancaraViewModel
+    /**
+     * Load data peserta lulus langsung dari database (hasil_wawancara)
+     * Ini lebih reliable daripada sync dari SeleksiWawancaraViewModel
+     */
+    fun loadPesertaLulusFromDatabase(token: String?) {
+        if (token == null) {
+            _loadError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+        
+        viewModelScope.launch {
+            _isLoadingFromDatabase.value = true
+            _loadError.value = null
+            
+            try {
+                val response = hasilWawancaraRepository.getHasilWawancara(token)
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    if (body.sukses && body.data != null) {
+                        // Hapus semua peserta yang ada
+                        _daftarDivisi.forEach { it.pesertaLulus.clear() }
+                        
+                        // Filter hanya peserta yang diterima dengan divisi
+                        val acceptedResults = body.data.filter { 
+                            it.status == "diterima" && !it.divisi.isNullOrBlank()
+                        }
+                        
+                        // Tambahkan ke divisi yang sesuai
+                        acceptedResults.forEach { hasil ->
+                            val targetDivisi = _daftarDivisi.find { it.namaDivisi == hasil.divisi }
+                            targetDivisi?.pesertaLulus?.add(
+                                ParticipantInfo(
+                                    name = hasil.namaPeserta,
+                                    status = InterviewStatus.ACCEPTED,
+                                    division = hasil.divisi ?: ""
+                                )
+                            )
+                        }
+                        
+                        _isLoadingFromDatabase.value = false
+                    } else {
+                        _loadError.value = body.pesan ?: "Gagal memuat data"
+                        _isLoadingFromDatabase.value = false
+                    }
+                } else {
+                    _loadError.value = "Gagal memuat data dari database. Status: ${response.code()}"
+                    _isLoadingFromDatabase.value = false
+                }
+            } catch (e: Exception) {
+                _loadError.value = "Error: ${e.message}"
+                _isLoadingFromDatabase.value = false
+            }
+        }
+    }
+    
+    // Sinkronisasi data dari SeleksiWawancaraViewModel (untuk backward compatibility)
     fun syncFromSeleksiWawancara(seleksiViewModel: SeleksiWawancaraViewModel) {
         // Hapus semua peserta yang ada
         _daftarDivisi.forEach { it.pesertaLulus.clear() }

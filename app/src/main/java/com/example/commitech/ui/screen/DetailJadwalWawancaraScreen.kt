@@ -2,6 +2,7 @@ package com.example.commitech.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -450,6 +453,12 @@ fun DetailJadwalWawancaraScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Collect authState untuk mendapatkan token
+    val authState by authViewModel?.authState?.collectAsState() ?: remember { 
+        mutableStateOf(com.example.commitech.ui.viewmodel.AuthState()) 
+    }
+    val authToken = authState.token
+
     // Collect pesertaDiterima sebagai State untuk reactive updates
     val pesertaDiterima by seleksiBerkasViewModel.pesertaList.collectAsState()
     
@@ -508,17 +517,16 @@ fun DetailJadwalWawancaraScreen(
                 
                 // Refresh status di SeleksiWawancaraViewModel agar muncul di tab Status
                 // Lakukan refresh segera setelah berhasil menyimpan
-                authViewModel?.authState?.value?.token?.let { token ->
+                authToken?.let { token ->
                     delay(300) // Delay kecil untuk memastikan API sudah selesai
-                    seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
+                    seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token, forceReload = true)
+                    // Refresh peserta dari jadwal untuk update jumlah peserta
+                    jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
                 }
                 
-                // Hapus peserta dari jadwal setelah menampilkan notifikasi dan refresh status
-                pesertaToRemove?.let { peserta ->
-                    delay(700) // Delay sedikit untuk memastikan notifikasi terlihat dan refresh selesai
-                    jadwalViewModel.hapusPesertaDariJadwal(jadwal.id, peserta.nama)
-                    pesertaToRemove = null
-                }
+                // TIDAK menghapus peserta dari jadwal - peserta tetap ditampilkan dengan status
+                // Peserta akan tetap ada di jadwal dengan status diterima/ditolak
+                pesertaToRemove = null
             }
         }
     }
@@ -528,30 +536,47 @@ fun DetailJadwalWawancaraScreen(
         jadwalViewModel.getAllPesertaNamaDiJadwalLain(jadwal.id)
     }
     
-    // Filter peserta yang lulus, belum ada di jadwal lain, dan belum ada di hasil_wawancara
-    val pesertaDiterimaFiltered = remember(pesertaDiterima, pesertaDiJadwalLain, pesertaIdDiHasilWawancara) {
+    // Filter peserta yang lulus, belum ada di jadwal lain, dan belum ada di hasil_wawancara dengan status diterima/ditolak
+    // Hanya tampilkan peserta yang BELUM punya jadwal wawancara (belum ada di jadwal manapun)
+    // Note: hasilWawancaraList sudah dideklarasikan di atas (line 457)
+    val pesertaDiterimaFiltered = remember(pesertaDiterima, pesertaDiJadwalLain, pesertaIdDiHasilWawancara, hasilWawancaraList) {
         pesertaDiterima.filter { peserta ->
-            peserta.statusSeleksiBerkas == "lulus" && 
-            peserta.nama !in pesertaDiJadwalLain &&
-            // Hilangkan peserta yang sudah ada di tabel hasil_wawancara
-            (peserta.id == null || peserta.id !in pesertaIdDiHasilWawancara)
+            // Hanya peserta yang lulus seleksi berkas
+            val lulusBerkas = peserta.statusSeleksiBerkas == "lulus"
+            
+            // Belum ada di jadwal lain (termasuk jadwal ini)
+            // Ini sudah memfilter peserta yang sudah punya jadwal wawancara
+            val belumAdaDiJadwal = peserta.nama !in pesertaDiJadwalLain
+            
+            // Belum punya tanggal_jadwal (belum punya jadwal wawancara)
+            val belumPunyaJadwal = peserta.tanggalJadwal.isNullOrBlank()
+            
+            // Belum ada di hasil_wawancara dengan status diterima/ditolak (pending masih bisa ditambahkan)
+            val belumFinal = if (peserta.id == null) {
+                true // Jika tidak ada ID, tetap tampilkan
+            } else {
+                val hasilWawancara = hasilWawancaraList.find { it.pesertaId == peserta.id }
+                // Hanya filter jika statusnya diterima atau ditolak (bukan pending)
+                hasilWawancara == null || (hasilWawancara.status != "diterima" && hasilWawancara.status != "ditolak")
+            }
+            
+            lulusBerkas && belumAdaDiJadwal && belumPunyaJadwal && belumFinal
         }
     }
     
     // State untuk dialog pemilihan peserta
     var showDialogPilihPeserta by remember { mutableStateOf(false) }
 
-                // Filter hanya peserta dengan status PENDING untuk ditampilkan
-                // Card akan hilang otomatis setelah terima/tolak karena status berubah
+                // Tampilkan SEMUA peserta yang ada di jadwal, termasuk yang sudah diterima/ditolak
+                // Status akan ditampilkan di card peserta
                 // Observe timerTick untuk trigger recomposition saat status berubah
                 val timerTick by detailViewModel.timerTick.collectAsState()
-                val pesertaPending = remember(pesertaTerpilih, timerTick, pesertaPerJadwalUpdateTrigger) {
-                    pesertaTerpilih.filter { peserta ->
-                        val state = detailViewModel.getPesertaState(peserta)
-                        // Jika state null atau belum ada, anggap sebagai PENDING (default)
-                        // Jika state ada, cek apakah statusnya PENDING
-                        state == null || state.status == InterviewStatus.PENDING
-                    }
+                // Note: hasilWawancaraList sudah dideklarasikan di atas (line 457)
+                
+                // Tampilkan semua peserta (tidak filter yang sudah final)
+                val pesertaPending = remember(pesertaTerpilih, timerTick, pesertaPerJadwalUpdateTrigger, hasilWawancaraList) {
+                    // Tampilkan semua peserta, status akan ditampilkan di card
+                    pesertaTerpilih
                 }
     
     // Load peserta dari database saat screen dibuka
@@ -568,7 +593,7 @@ fun DetailJadwalWawancaraScreen(
         
         // Set token ke SeleksiBerkasViewModel untuk load peserta dari database
         // Pastikan hanya peserta dengan status "lulus" yang ditampilkan
-        authViewModel?.authState?.value?.token?.let { token ->
+        authToken?.let { token ->
             seleksiBerkasViewModel.setAuthToken(token)
             // Load hasil wawancara untuk filter peserta yang sudah ada di tabel hasil_wawancara
             seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
@@ -678,9 +703,10 @@ fun DetailJadwalWawancaraScreen(
                     )
                     Button(
                         onClick = { showDialogPilihPeserta = true },
-                        enabled = pesertaDiterimaFiltered.isNotEmpty() && pesertaTerpilih.size < 5,
+                        enabled = pesertaTerpilih.size < 5 && pesertaDiterimaFiltered.isNotEmpty(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.primary
+                            containerColor = colorScheme.primary,
+                            disabledContainerColor = colorScheme.primary.copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -696,12 +722,6 @@ fun DetailJadwalWawancaraScreen(
             }
             
             item {
-                // Debug info
-                Text(
-                    text = "Debug: pesertaDiterima=${seleksiBerkasViewModel.pesertaDiterima.size} peserta, pesertaTerpilih=${pesertaTerpilih.size}, pesertaPending=${pesertaPending.size}",
-                    color = Color.Red,
-                    fontSize = 12.sp
-                )
                 Text(
                     text = "${pesertaTerpilih.size}/5 peserta dipilih",
                     fontSize = 14.sp,
@@ -754,17 +774,15 @@ fun DetailJadwalWawancaraScreen(
                         pesertaState = pesertaState,
                         colorScheme = colorScheme,
                         detailViewModel = detailViewModel,
-                        authToken = authViewModel?.authState?.value?.token,
+                        authToken = authToken,
                         jadwalViewModel = jadwalViewModel,
                         jadwalId = jadwal.id,
+                        seleksiWawancaraViewModel = seleksiWawancaraViewModel,
                         onTerimaTolak = {
                             // Set peserta untuk dihapus setelah sukses menyimpan
                             pesertaToRemove = peserta
                         },
-                        onHapus = {
-                            // Hapus peserta dari jadwal (akan menghapus dari database juga)
-                            jadwalViewModel.hapusPesertaDariJadwal(jadwal.id, peserta.nama)
-                        }
+                        onHapus = null // Tidak ada tombol hapus
                     )
                 }
             }
@@ -775,7 +793,7 @@ fun DetailJadwalWawancaraScreen(
     if (showDialogPilihPeserta) {
         // Refresh hasil wawancara saat dialog dibuka untuk memastikan filter up-to-date
         LaunchedEffect(showDialogPilihPeserta) {
-            authViewModel?.authState?.value?.token?.let { token ->
+            authToken?.let { token ->
                 seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
             }
         }
@@ -791,7 +809,7 @@ fun DetailJadwalWawancaraScreen(
                     detailViewModel.initPesertaState(peserta)
                 }
                 // Reload peserta dari database untuk memastikan data ter-update
-                authViewModel?.authState?.value?.token?.let { token ->
+                authToken?.let { token ->
                     jadwalViewModel.setAuthToken(token)
                     // Load ulang peserta untuk jadwal ini
                     jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
@@ -812,12 +830,13 @@ fun PesertaCardWawancara(
     authToken: String?,
     jadwalViewModel: JadwalViewModel,
     jadwalId: Int,
+    seleksiWawancaraViewModel: SeleksiWawancaraViewModel? = null,
     onTerimaTolak: () -> Unit = {},
     onHapus: (() -> Unit)? = null
 ) {
     var showTimeDialog by remember { mutableStateOf(false) }
     var showDivisionDialog by remember { mutableStateOf(false) }
-    
+
     // Local state untuk timer (simple, tanpa backend)
     var isTimerRunning by remember(peserta.id, peserta.nama) { mutableStateOf(false) }
     var remainingSeconds by remember(peserta.id, peserta.nama) { mutableIntStateOf(0) }
@@ -830,38 +849,78 @@ fun PesertaCardWawancara(
 
     // Observe timer tick untuk trigger recomposition setiap detik
     val timerTick by detailViewModel.timerTick.collectAsState()
-    
+
     // Get updated state untuk status (diterima/ditolak)
+    // Prioritas: status_wawancara dari peserta > state dari ViewModel
     val currentState = detailViewModel.getPesertaState(peserta)
-    val updatedState = currentState ?: PesertaWawancaraState(
-        pesertaId = peserta.id,
-        nama = peserta.nama
-    )
+    val statusWawancara = peserta.statusWawancara?.lowercase()?.trim() ?: "pending"
     
+    // Cek juga dari hasil wawancara untuk mendapatkan divisi dan alasan
+    val hasilWawancara = seleksiWawancaraViewModel?.getHasilWawancaraByPesertaId(peserta.id ?: -1)
+    
+    // Tentukan status berdasarkan status_wawancara dari peserta (prioritas utama)
+    // Gunakan remember dengan key timerTick untuk trigger recomposition saat status berubah
+    val finalStatus = remember(timerTick, statusWawancara, hasilWawancara?.status, currentState?.status) {
+        when {
+            statusWawancara == "diterima" -> InterviewStatus.ACCEPTED
+            statusWawancara == "ditolak" -> InterviewStatus.REJECTED
+            hasilWawancara?.status == "diterima" -> InterviewStatus.ACCEPTED
+            hasilWawancara?.status == "ditolak" -> InterviewStatus.REJECTED
+            currentState?.status == InterviewStatus.ACCEPTED -> InterviewStatus.ACCEPTED
+            currentState?.status == InterviewStatus.REJECTED -> InterviewStatus.REJECTED
+            else -> InterviewStatus.PENDING
+        }
+    }
+    
+    // Ambil divisi dan alasan dari hasil wawancara jika ada
+    val divisi = remember(timerTick, hasilWawancara?.divisi, currentState?.divisi) {
+        hasilWawancara?.divisi ?: currentState?.divisi ?: ""
+    }
+    val alasan = remember(timerTick, hasilWawancara?.alasan, currentState?.alasan) {
+        hasilWawancara?.alasan ?: currentState?.alasan ?: ""
+    }
+    
+    val updatedState = remember(timerTick, currentState, finalStatus, divisi, alasan) {
+        currentState?.copy(
+            status = finalStatus,
+            divisi = divisi,
+            alasan = alasan
+        ) ?: PesertaWawancaraState(
+            pesertaId = peserta.id,
+            nama = peserta.nama,
+            status = finalStatus,
+            divisi = divisi,
+            alasan = alasan
+        )
+    }
+    
+    // Flag untuk menentukan apakah peserta sudah final (tidak bisa di-wawancara ulang)
+    val isFinalStatus = finalStatus == InterviewStatus.ACCEPTED || finalStatus == InterviewStatus.REJECTED
+
     // Countdown timer sederhana - tidak perlu backend
     // Gunakan LaunchedEffect untuk countdown yang berjalan setiap detik
     LaunchedEffect(isTimerRunning) {
         if (!isTimerRunning) return@LaunchedEffect
-        
+
         // Baca nilai terbaru dari state saat timer dimulai/resume
         var currentSeconds = remainingSeconds
-        
+
         while (currentSeconds > 0 && isTimerRunning) {
             delay(1000)
             currentSeconds--
             remainingSeconds = currentSeconds
         }
-        
+
         if (currentSeconds <= 0) {
             isTimerRunning = false
         }
     }
-    
+
     // Format remaining time
     val minutes = remainingSeconds / 60
     val seconds = remainingSeconds % 60
     val remainingTime = String.format("%02d:%02d", minutes, seconds)
-    
+
     val isSavingHasil by detailViewModel.isSavingHasil.collectAsState()
 
     // Collect success/error messages
@@ -885,109 +944,67 @@ fun PesertaCardWawancara(
             // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            colorScheme.primary.copy(alpha = 0.1f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = peserta.nama.take(1).uppercase(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.primary
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = peserta.nama,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(4.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                colorScheme.primary.copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Lulus Seleksi Berkas",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF4CAF50),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            text = peserta.nama.take(1).uppercase(),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.primary
                         )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = peserta.nama,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Badge "Lulus Seleksi Berkas" - selalu tampilkan
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "Lulus Seleksi Berkas",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF4CAF50),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
                             }
 
-                            // Status badge berdasarkan hasil wawancara
-                            when (updatedState.status) {
-                                InterviewStatus.ACCEPTED -> {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Color(0xFF4CAF50).copy(alpha = 0.1f)
-                                    ) {
-                                        Text(
-                                            text = "Lulus",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF4CAF50),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                                InterviewStatus.REJECTED -> {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = Color(0xFFD32F2F).copy(alpha = 0.1f)
-                                    ) {
-                                        Text(
-                                            text = "Tidak Lulus",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFFD32F2F),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                                else -> {}
-                            }
+                            // Status badge wawancara dihapus - hanya tampilkan di banner bawah
+                        }
                     }
                 }
             }
             
-            // Button hapus selalu ditampilkan jika onHapus tidak null
-            IconButton(
-                onClick = { onHapus?.invoke() },
-                modifier = Modifier.size(40.dp),
-                enabled = onHapus != null
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Hapus Peserta",
-                        tint = if (onHapus != null) Color(0xFFD32F2F) else colorScheme.onSurface.copy(
-                            alpha = 0.3f
-                        ),
-                    modifier = Modifier.size(20.dp)
-                )
-                }
-            }
-
             Spacer(Modifier.height(12.dp))
 
             // Timer section dan action buttons (only show if pending)
-            if (updatedState.status == InterviewStatus.PENDING) {
+            // JIKA SUDAH FINAL (diterima/ditolak), tampilkan informasi status saja, TIDAK tampilkan tombol action
+            if (!isFinalStatus && updatedState.status == InterviewStatus.PENDING) {
                 // Timer display (jika sudah dimulai) - simple countdown
                 if (timerDuration > 0 || remainingSeconds > 0) {
                     Row(
@@ -1013,7 +1030,9 @@ fun PesertaCardWawancara(
                                     text = remainingTime,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isTimerRunning) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                                    color = if (isTimerRunning) Color(0xFF4CAF50) else Color(
+                                        0xFFFF9800
+                                    )
                                 )
                             }
                             Text(
@@ -1064,17 +1083,17 @@ fun PesertaCardWawancara(
                 } else {
                     // Button Mulai (jika timer belum dimulai) - selalu tampilkan untuk memulai countdown
                     Button(
-                        onClick = { 
+                        onClick = {
                             // Pastikan state sudah di-initialize sebelum membuka dialog
                             detailViewModel.initPesertaState(peserta)
-                            showTimeDialog = true 
+                            showTimeDialog = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorScheme.primary
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil // Pastikan button aktif kecuali sedang menyimpan
+                        enabled = !isSavingHasil && !isFinalStatus // Nonaktifkan jika sudah final
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -1107,7 +1126,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null // Pastikan token ada
+                        enabled = !isSavingHasil && authToken != null && !isFinalStatus // Nonaktifkan jika sudah final
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbDown,
@@ -1120,10 +1139,10 @@ fun PesertaCardWawancara(
 
                     // Button Terima
                     Button(
-                        onClick = { 
+                        onClick = {
                             // Pastikan state sudah di-initialize sebelum membuka dialog
                             detailViewModel.initPesertaState(peserta)
-                            showDivisionDialog = true 
+                            showDivisionDialog = true
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
@@ -1131,7 +1150,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFF4CAF50).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null // Pastikan token ada
+                        enabled = !isSavingHasil && authToken != null && !isFinalStatus // Nonaktifkan jika sudah final
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbUp,
@@ -1143,78 +1162,127 @@ fun PesertaCardWawancara(
                     }
                 }
             } else if (updatedState.status == InterviewStatus.ACCEPTED) {
-                // Show division info if accepted
+                // Show division info if accepted - tampilkan dengan lebih jelas
+                Spacer(Modifier.height(8.dp))
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF4CAF50).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFF4CAF50)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                                        Text(
-                        text = "Diterima di Divisi: ${updatedState.divisi}",
-                        fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                        color = Color(0xFF4CAF50),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                                        )
-                }
-            } else if (updatedState.status == InterviewStatus.REJECTED) {
-                // Show rejection info if rejected
-                                        Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFD32F2F).copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                                        ) {
-                                            Text(
-                            text = "Tidak Lulus Wawancara",
-                            fontSize = 14.sp,
-                                                fontWeight = FontWeight.Medium,
-                            color = Color(0xFFD32F2F)
-                        )
-                        if (updatedState.alasan.isNotEmpty()) {
-                            Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = updatedState.alasan,
-                                fontSize = 12.sp,
-                                color = Color(0xFFD32F2F).copy(alpha = 0.8f)
-                                    )
-                                }
+                                text = "✓ Diterima",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4CAF50)
+                            )
+                            if (updatedState.divisi.isNotBlank()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Divisi: ${updatedState.divisi}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF4CAF50).copy(alpha = 0.9f)
+                                )
                             }
                         }
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 }
-                
-        // Time selection dialog
-        if (showTimeDialog) {
-            DialogPilihWaktu(
-                onDismiss = { showTimeDialog = false },
-                onConfirm = { minutes: Int ->
-                    // Set durasi dan mulai countdown sederhana (tidak perlu backend)
-                    timerDuration = minutes
-                    remainingSeconds = minutes * 60
-                    isTimerRunning = true
-                    showTimeDialog = false
-                },
-                colorScheme = colorScheme
-            )
-        }
+            } else if (updatedState.status == InterviewStatus.REJECTED) {
+                // Show rejection info if rejected - tampilkan dengan lebih jelas
+                Spacer(Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFD32F2F).copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Color(0xFFD32F2F)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "✗ Tidak Lulus",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD32F2F)
+                            )
+                            if (updatedState.alasan.isNotBlank()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = updatedState.alasan,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFD32F2F).copy(alpha = 0.9f),
+                                    lineHeight = 18.sp
+                                )
+                            } else {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Tidak ada alasan",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFD32F2F).copy(alpha = 0.7f),
+                                    fontStyle = FontStyle.Italic
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+            }
 
-        // Division selection dialog
-        if (showDivisionDialog) {
-            DialogPilihDivisi(
-                onDismiss = { showDivisionDialog = false },
-                onConfirm = { divisi: String ->
-                    // Pastikan state sudah di-initialize sebelum accept peserta
-                    detailViewModel.initPesertaState(peserta)
-                    detailViewModel.acceptPeserta(peserta, divisi, authToken)
-                    // Set peserta untuk dihapus setelah sukses menyimpan
-                    onTerimaTolak()
-                    showDivisionDialog = false
-                },
-                colorScheme = colorScheme
-            )
+            // Time selection dialog
+            if (showTimeDialog) {
+                DialogPilihWaktu(
+                    onDismiss = { showTimeDialog = false },
+                    onConfirm = { minutes: Int ->
+                        // Set durasi dan mulai countdown sederhana (tidak perlu backend)
+                        timerDuration = minutes
+                        remainingSeconds = minutes * 60
+                        isTimerRunning = true
+                        showTimeDialog = false
+                    },
+                    colorScheme = colorScheme
+                )
+            }
+
+            // Division selection dialog
+            if (showDivisionDialog) {
+                DialogPilihDivisi(
+                    onDismiss = { showDivisionDialog = false },
+                    onConfirm = { divisi: String ->
+                        // Pastikan state sudah di-initialize sebelum accept peserta
+                        detailViewModel.initPesertaState(peserta)
+                        detailViewModel.acceptPeserta(peserta, divisi, authToken)
+                        // Set peserta untuk dihapus setelah sukses menyimpan
+                        onTerimaTolak()
+                        showDivisionDialog = false
+                    },
+                    colorScheme = colorScheme
+                )
+            }
         }
     }
 }

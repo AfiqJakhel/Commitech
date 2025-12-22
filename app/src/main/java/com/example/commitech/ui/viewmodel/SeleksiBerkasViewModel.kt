@@ -36,7 +36,9 @@ data class Peserta(
     val suratKomitmen: String? = null, // Link atau status surat komitmen
     val lulusBerkas: Boolean,
     val ditolak: Boolean,
-    val statusSeleksiBerkas: String? = null // Status dari database: belum_direview, lulus, tidak_lulus
+    val statusSeleksiBerkas: String? = null, // Status dari database: belum_direview, lulus, tidak_lulus
+    val statusWawancara: String? = null, // Status wawancara dari database: pending, diterima, ditolak
+    val tanggalJadwal: String? = null // Tanggal jadwal wawancara (jika sudah punya jadwal)
 )
 
 data class SeleksiBerkasState(
@@ -161,7 +163,9 @@ class SeleksiBerkasViewModel : ViewModel() {
                                 suratKomitmen = if (pendaftar.suratKomitmen == true) "Tersedia" else pendaftar.suratKomitmen?.toString(),
                                 lulusBerkas = lulusBerkas,
                                 ditolak = ditolak,
-                                statusSeleksiBerkas = status
+                                statusSeleksiBerkas = status,
+                                statusWawancara = pendaftar.statusWawancara ?: "pending",
+                                tanggalJadwal = pendaftar.tanggalJadwal
                             )
                         }
                         
@@ -372,7 +376,8 @@ class SeleksiBerkasViewModel : ViewModel() {
                     tanggalJadwal = null,
                     waktuJadwal = null,
                     lokasi = null,
-                    statusSeleksiBerkas = null
+                    statusSeleksiBerkas = null,
+                    statusWawancara = null
                 )
                 
                 val response = withContext(Dispatchers.IO) {
