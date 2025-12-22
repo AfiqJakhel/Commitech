@@ -241,9 +241,7 @@ fun AppNavGraph(
             popEnterTransition = { powerPointPushPopEnter() },
             popExitTransition = { powerPointPushPopExit() }
         ) {
-            val viewModel: SeleksiBerkasViewModel = viewModel()
             SeleksiBerkasScreen(
-                viewModel = viewModel,
                 authViewModel = authViewModel,
                 onBackClick = { navController.popBackStack() }
             )

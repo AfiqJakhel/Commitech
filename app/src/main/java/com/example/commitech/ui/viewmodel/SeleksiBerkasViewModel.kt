@@ -1,5 +1,6 @@
 package com.example.commitech.ui.viewmodel
 
+import android.content.ContentValues
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import android.content.Context
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 
 data class Peserta(
     val id: Int? = null, // ID dari database (untuk API call)
@@ -48,10 +57,13 @@ data class SeleksiBerkasState(
     val hasMore: Boolean = false
 )
 
-class SeleksiBerkasViewModel : ViewModel() {
+class SeleksiBerkasViewModel(
+    private val context: Context
+) : ViewModel(
+) {
     private val repository = DataPendaftarRepository()
     private var authToken: String = ""
-    
+
     private val _pesertaList = MutableStateFlow<List<Peserta>>(emptyList())
     val pesertaList: StateFlow<List<Peserta>> = _pesertaList.asStateFlow()
     
@@ -446,5 +458,280 @@ class SeleksiBerkasViewModel : ViewModel() {
     fun clearError() {
         _state.value = _state.value.copy(error = null)
     }
-}
 
+    // Add these functions to the SeleksiBerkasViewModel class
+
+    /**
+     * Export data peserta yang lolos seleksi berkas ke CSV
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun exportToCSV(callback: (Boolean, String?, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val pesertaLulus = _pesertaList.value.filter { it.statusSeleksiBerkas == "lulus" }
+
+                if (pesertaLulus.isEmpty()) {
+                    callback(false, "Tidak ada peserta yang lolos seleksi berkas", null)
+                    return@launch
+                }
+
+                // Create CSV content
+                val csvHeader = "Nama,NIM,Email,Telepon,Jurusan,Angkatan,Divisi 1,Divisi 2,Alasan 1,Alasan 2\n"
+
+                val csvContent = StringBuilder(csvHeader)
+                pesertaLulus.forEach { peserta ->
+
+                    fun esc(value: String?): String {
+                        return "\"" + (value ?: "")
+                            .replace("\"", "\"\"")
+                            .replace("\n", " ")
+                            .replace("\r", " ") + "\""
+                    }
+
+                    csvContent.append(
+                        esc(peserta.nama) + "," +
+                                esc(peserta.nim) + "," +
+                                esc(peserta.email) + "," +
+                                esc(peserta.telepon) + "," +
+                                esc(peserta.jurusan) + "," +
+                                esc(peserta.angkatan) + "," +
+                                esc(peserta.divisi1) + "," +
+                                esc(peserta.divisi2) + "," +
+                                esc(peserta.alasan1) + "," +
+                                esc(peserta.alasan2) + ","
+                    )
+
+                    // ✅ KUNCI UTAMA
+                    csvContent.append("\n")
+                }
+
+                // Save to file
+                val fileName = "peserta_lulus_${System.currentTimeMillis()}.csv"
+
+                val resolver = context.contentResolver
+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val uri = resolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ) ?: throw Exception("Gagal membuat file CSV")
+
+                resolver.openOutputStream(uri)?.use { output ->
+                    output.write(csvContent.toString().toByteArray())
+                }
+
+                callback(
+                    true,
+                    "CSV berhasil disimpan di folder Download",
+                    uri.toString()
+                )
+            } catch (e: Exception) {
+                Log.e("SeleksiBerkasViewModel", "Error exporting to CSV", e)
+                callback(false, "Gagal mengekspor ke CSV: ${e.message}", null)
+            }
+        }
+    }
+
+    /**
+     * Export data peserta yang lolos seleksi berkas ke PDF
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    fun exportToPDF(callback: (Boolean, String?, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val data = _pesertaList.value.filter {
+                    it.statusSeleksiBerkas == "lulus"
+                }
+
+                if (data.isEmpty()) {
+                    callback(false, "Tidak ada data untuk diekspor", null)
+                    return@launch
+                }
+
+                val document = PdfDocument()
+                val pageWidth = 595
+                val pageHeight = 842
+                val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+
+
+                var page = document.startPage(pageInfo)
+                var canvas = page.canvas
+
+                val textPaint = Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 9f
+                    typeface = Typeface.create("serif", Typeface.NORMAL)
+                }
+
+                val headerPaint = Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 9.5f
+                    isFakeBoldText = true
+                    typeface = Typeface.create("serif", Typeface.BOLD)
+                }
+
+                val borderPaint = Paint().apply {
+                    color = android.graphics.Color.BLACK   // ⬅️ garis hitam
+                    style = Paint.Style.STROKE             // ⬅️ PENTING
+                    strokeWidth = 1f
+                }
+
+                val cellBgPaint = Paint().apply {
+                    color = android.graphics.Color.WHITE   // ⬅️ background putih
+                    style = Paint.Style.FILL
+                }
+
+                val titlePaint = Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 16f
+                    isFakeBoldText = true
+                    textAlign = Paint.Align.CENTER
+                    typeface = Typeface.create("serif", Typeface.BOLD)
+                }
+
+                val linePaint = Paint().apply {
+                    color = android.graphics.Color.GRAY   // garis abu-abu
+                    strokeWidth = 1f
+                }
+
+                var y = 50f
+
+                // ===== JUDUL =====
+                canvas.drawText(
+                    "Daftar Peserta Lulus Seleksi Berkas",
+                    pageInfo.pageWidth / 2f,
+                    40f,
+                    titlePaint
+                )
+                y += 40f
+
+                // ===== FORMAT TABEL (SAMA DENGAN CSV) =====
+                val startX = 30f
+                val colWidths = floatArrayOf(
+                    80f,  // Nama
+                    60f,  // NIM
+                    110f, // Email
+                    70f,  // Telepon
+                    80f,  // Jurusan
+                    50f,  // Angkatan
+                    80f   //status
+                )
+
+                val headers = listOf(
+                    "Nama", "NIM", "Email", "Telepon",
+                    "Jurusan", "Angkatan", "Status"
+                )
+
+                val rowHeight = 16f
+
+                fun drawRow(
+                    values: List<String>,
+                    yPos: Float,
+                    isHeader: Boolean = false
+                ) {
+                    var x = startX
+                    val paintText = if (isHeader) headerPaint else textPaint
+
+                    values.forEachIndexed { i, value ->
+
+                        // Background putih
+                        canvas.drawRect(
+                            x,
+                            yPos - rowHeight,
+                            x + colWidths[i],
+                            yPos,
+                            cellBgPaint
+                        )
+
+                        // Border hitam
+                        canvas.drawRect(
+                            x,
+                            yPos - rowHeight,
+                            x + colWidths[i],
+                            yPos,
+                            borderPaint
+                        )
+
+                        // Text
+                        canvas.drawText(
+                            value,
+                            x + 4f,
+                            yPos - 4f,
+                            paintText
+                        )
+
+                        x += colWidths[i]
+                    }
+                }
+
+
+                // Header
+                drawRow(headers, y, isHeader = true)
+                y += rowHeight
+
+                // Data (1 record = 1 baris)
+                data.forEachIndexed { index, p ->
+                    if (y > pageHeight - 40) {
+                        document.finishPage(page)
+                        page = document.startPage(pageInfo)
+                        canvas = page.canvas
+                        y = 50f
+                    }
+
+                    drawRow(
+                        listOf(
+                            p.nama,
+                            p.nim ?: "-",
+                            p.email ?: "-",
+                            p.telepon ?: "-",
+                            p.jurusan ?: "-",
+                            p.angkatan ?: "-",
+                            p.statusSeleksiBerkas ?: "-"
+                        ),
+                        y
+                    )
+                    y += rowHeight
+                }
+
+                document.finishPage(page)
+
+                val fileName = "peserta_lulus_${System.currentTimeMillis()}.pdf"
+
+                val resolver = context.contentResolver
+
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val uri = resolver.insert(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    contentValues
+                ) ?: throw Exception("Gagal membuat file PDF")
+
+                resolver.openOutputStream(uri)?.use {
+                    document.writeTo(it)
+                }
+
+                document.close()
+
+                callback(
+                    true,
+                    "PDF berhasil disimpan di folder Download",
+                    uri.toString()
+                )
+            } catch (e: Exception) {
+                Log.e("SeleksiBerkasVM", "Export PDF error", e)
+                callback(false, e.message, null)
+            }
+        }
+    }
+
+
+}

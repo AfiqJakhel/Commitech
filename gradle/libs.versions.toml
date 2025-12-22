@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "8.12.2"
 kotlin = "2.0.21"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -18,6 +18,7 @@ animationCore = "1.9.4"
 retrofit = "2.9.0"
 okhttp = "4.12.0"
 gson = "2.10.1"
+uiGraphicsVersion = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +47,7 @@ retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", ver
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphicsVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.example.commitech.ui.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
@@ -31,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -38,13 +42,20 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
+import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModelFactory
+import kotlinx.coroutines.launch
 
 @Composable
 fun SeleksiBerkasScreen(
-    viewModel: SeleksiBerkasViewModel = viewModel(),
     authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    val viewModel: SeleksiBerkasViewModel = viewModel(
+        factory = SeleksiBerkasViewModelFactory(context)
+    )
+
     val authState by authViewModel.authState.collectAsState()
     
     // Set token dan load data saat pertama kali
@@ -71,8 +82,17 @@ fun SeleksiBerkasScreen(
     val cardColor = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
     val subTitleColor = if (isDark) Color(0xFFBDBDBD) else Color(0xFF4A3A79)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var isExporting by remember { mutableStateOf(false) }
+    var exportSuccess by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
+    var exportedFileUri by remember { mutableStateOf<String?>(null) }
+
+
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -290,35 +310,156 @@ fun SeleksiBerkasScreen(
 
             // Export Button - Hanya enabled jika semua peserta sudah direview
             val semuaSudahDireview = viewModel.semuaPesertaSudahDireview
-            
-            Button(
-                onClick = { 
-                    // Export hanya peserta yang lolos seleksi berkas
-                    // TODO: Implement export CSV untuk peserta yang lolos
-                },
-                enabled = semuaSudahDireview,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (semuaSudahDireview) Color(0xFF22C55E) else Color(0xFFBDBDBD)
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .navigationBarsPadding()
-            ) {
-                Text(
-                    text = if (semuaSudahDireview) {
-                        "Export Lolos Seleksi Berkas (.csv)"
-                    } else {
-                        "Selesaikan Review Semua Peserta untuk Export"
+
+            // ================= EXPORT BUTTON AREA =================
+            when {
+
+                // ===== LOADING STATE =====
+                isExporting -> {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .navigationBarsPadding()
+                    ) {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFBDBDBD)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Mengekspor data...",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFF22C55E)
+                        )
+                    }
+                }
+
+                // ===== BELUM SEMUA DIREVIEW =====
+                !semuaSudahDireview -> {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFBDBDBD)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .navigationBarsPadding()
+                    ) {
+                        Text(
+                            text = "Selesaikan Review Semua Peserta untuk Export",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // ===== SEMUA DIREVIEW → CSV & PDF =====
+                else -> {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .navigationBarsPadding(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        // ===== CSV BUTTON =====
+                        Button(
+                            onClick = {
+                                isExporting = true
+                                viewModel.exportToCSV { success, message, fileUri ->
+                                    isExporting = false
+                                    exportSuccess = success
+                                    exportMessage = message
+                                    exportedFileUri = fileUri
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF22C55E)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Export CSV",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        // ===== PDF BUTTON =====
+                        Button(
+                            onClick = {
+                                isExporting = true
+                                viewModel.exportToPDF { success, message, fileUri ->
+                                    isExporting = false
+                                    exportSuccess = success
+                                    exportMessage = message
+                                    exportedFileUri = fileUri
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEF4444)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "Export PDF",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+            exportMessage?.let { message ->
+                ExportResultDialog(
+                    success = exportSuccess,
+                    message = message,
+                    onDismiss = {
+                        exportMessage = null
+                        exportedFileUri = null
                     },
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    modifier = Modifier.fillMaxWidth()
+                    onOpenFile = if (exportSuccess && exportedFileUri != null) {
+                        {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(Uri.parse(exportedFileUri), "*/*")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(intent)
+                        }
+                    } else null
                 )
             }
         }
@@ -1485,6 +1626,125 @@ fun DeletePesertaDialog(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Hapus", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExportResultDialog(
+    success: Boolean,
+    message: String,
+    onDismiss: () -> Unit,
+    onOpenFile: (() -> Unit)? = null
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f))
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White,
+                tonalElevation = 8.dp,
+                shadowElevation = 10.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    // ===== CLOSE ICON =====
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Tutup",
+                                tint = Color(0xFF4A3A79)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // ===== TITLE =====
+                    Text(
+                        text = if (success) "Export Berhasil" else "Export Gagal",
+                        color = Color(0xFF4A3A79),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // ===== ICON =====
+                    Icon(
+                        imageVector = if (success) Icons.Default.CheckCircle else Icons.Default.Error,
+                        contentDescription = null,
+                        tint = if (success) Color(0xFF16A34A) else Color(0xFFDC2626),
+                        modifier = Modifier.size(70.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // ===== MESSAGE =====
+                    Text(
+                        text = message,
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // ===== ACTION BUTTONS =====
+                    if (success && onOpenFile != null) {
+                        Button(
+                            onClick = onOpenFile,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF16A34A)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                "Buka File",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Tutup", fontWeight = FontWeight.Bold)
                     }
                 }
             }
