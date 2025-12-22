@@ -103,6 +103,7 @@ import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.data.model.HasilWawancaraResponse
+import com.example.commitech.data.model.PendaftarResponse
 import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.collectAsState
 import android.app.TimePickerDialog
@@ -146,8 +147,10 @@ fun SeleksiWawancaraScreen(
     val tabs = listOf("Jadwal", "Status")
 
     val colorScheme = MaterialTheme.colorScheme
-    val totalPeserta = viewModel.totalParticipants()
     val context = LocalContext.current
+
+    val pesertaLulusCount by viewModel.pesertaLulusCount.collectAsState()
+    val isLoadingPesertaLulusCount by viewModel.isLoadingPesertaLulusCount.collectAsState()
 
     // Collect auth state untuk token
     val authState by authViewModel.authState.collectAsState()
@@ -203,6 +206,7 @@ fun SeleksiWawancaraScreen(
             // Ini memastikan data selalu fresh dan tidak ada race condition
             viewModel.loadJadwalWawancaraFromDatabase(token)
             viewModel.loadPesertaLulusTanpaJadwal(token)
+            viewModel.loadCountPesertaLulus(token)
             // Load hasil wawancara untuk update status
             viewModel.loadHasilWawancaraAndUpdateStatus(token)
             // Load jadwal rekrutmen juga
@@ -331,7 +335,7 @@ fun SeleksiWawancaraScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "$totalPeserta Peserta",
+                                "${if (isLoadingPesertaLulusCount) "..." else pesertaLulusCount} Peserta",
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = colorScheme.primary
@@ -608,15 +612,6 @@ fun WawancaraJadwalContent(
             }
 
         }
-
-        // Jadwal peserta (existing)
-        items(viewModel.days.size) { index ->
-            ExpandableDayCard(
-                viewModel = viewModel,
-                dayIndex = index,
-                authState = authState
-            )
-        }
     }
 }
 
@@ -786,15 +781,30 @@ fun WawancaraStatusContent(
             viewModel.loadHasilWawancaraAndUpdateStatus(token)
         }
     }
+
+    LaunchedEffect(authState.token, filterStatus) {
+        if (filterStatus == InterviewStatus.PENDING) {
+            authState.token?.let { token ->
+                viewModel.loadPesertaPendingWawancara(token)
+            }
+        }
+    }
     
     // Ambil data dari hasil wawancara di database
     val hasilWawancaraList by viewModel.hasilWawancaraList.collectAsState()
+
+    val pesertaPendingWawancara by viewModel.pesertaPendingWawancara.collectAsState()
+    val isLoadingPesertaPendingWawancara by viewModel.isLoadingPesertaPendingWawancara.collectAsState()
     
     // Filter berdasarkan status
     val filteredList = remember(hasilWawancaraList, filterStatus) {
         val filtered = viewModel.getHasilWawancaraByStatus(filterStatus)
         // Sort berdasarkan nama peserta
         filtered.sortedBy { it.namaPeserta }
+    }
+
+    val pendingList = remember(pesertaPendingWawancara) {
+        pesertaPendingWawancara.sortedBy { it.nama ?: "" }
     }
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -812,7 +822,33 @@ fun WawancaraStatusContent(
 
         Spacer(Modifier.height(12.dp))
 
-        if (filteredList.isEmpty()) {
+        val showPendingList = filterStatus == InterviewStatus.PENDING
+
+        if (showPendingList && isLoadingPesertaPendingWawancara) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+            }
+        } else if (showPendingList && pendingList.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Text(
+                        text = "Belum ada peserta pending wawancara",
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else if (!showPendingList && filteredList.isEmpty()) {
             // Empty state
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -836,6 +872,18 @@ fun WawancaraStatusContent(
                     )
                 }
             }
+        } else if (showPendingList) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                itemsIndexed(pendingList) { index, peserta ->
+                    StatusRowFromPesertaPending(
+                        no = index + 1,
+                        peserta = peserta
+                    )
+                }
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -847,6 +895,75 @@ fun WawancaraStatusContent(
                         hasilWawancara = hasil
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusRowFromPesertaPending(
+    no: Int,
+    peserta: PendaftarResponse
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val statusColor = Color(0xFFFF9800)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        colorScheme.primary.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "$no",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = colorScheme.primary
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Text(
+                peserta.nama ?: "Nama tidak diketahui",
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                color = colorScheme.onSurface
+            )
+
+            Spacer(Modifier.width(12.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = statusColor.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    "Pending",
+                    color = statusColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -923,7 +1040,7 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
 
             // Name
             Text(
@@ -934,7 +1051,7 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
                 color = colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
 
             // Status Badge
             Surface(
@@ -1015,7 +1132,7 @@ fun StatusRowFromHasilWawancara(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(Modifier.width(12.dp))
 
                 // Name (Data diri pendaftar)
                 Column(modifier = Modifier.weight(1f)) {
@@ -1037,7 +1154,7 @@ fun StatusRowFromHasilWawancara(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(Modifier.width(12.dp))
 
                 // Status Badge
                 Surface(

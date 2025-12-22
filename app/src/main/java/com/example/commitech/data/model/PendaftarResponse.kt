@@ -120,6 +120,20 @@ data class PendaftarSingleResponse(
     val data: PendaftarResponse
 )
 
+data class PesertaLulusCountData(
+    @SerializedName("count")
+    val count: Int
+)
+
+data class PesertaLulusCountResponse(
+    @SerializedName("success")
+    val success: Boolean,
+    @SerializedName("message")
+    val message: String,
+    @SerializedName("data")
+    val data: PesertaLulusCountData
+)
+
 data class ImportExcelResponse(
     @SerializedName("success")
     val success: Boolean,

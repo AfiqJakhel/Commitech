@@ -6,6 +6,7 @@ import com.example.commitech.data.model.RegisterRequest
 import com.example.commitech.data.model.PendaftarListResponse
 import com.example.commitech.data.model.PendaftarSingleResponse
 import com.example.commitech.data.model.PendaftarResponse
+import com.example.commitech.data.model.PesertaLulusCountResponse
 import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import com.example.commitech.data.model.HasilWawancaraRequest
@@ -81,6 +82,16 @@ interface ApiService {
     
     @GET("api/peserta/lulus-tanpa-jadwal")
     suspend fun getPesertaLulusTanpaJadwal(
+        @Header("Authorization") token: String
+    ): Response<PendaftarListResponse>
+
+    @GET("api/peserta/count-lulus")
+    suspend fun getCountPesertaLulus(
+        @Header("Authorization") token: String
+    ): Response<PesertaLulusCountResponse>
+
+    @GET("api/peserta/pending-wawancara")
+    suspend fun getPesertaPendingWawancara(
         @Header("Authorization") token: String
     ): Response<PendaftarListResponse>
     

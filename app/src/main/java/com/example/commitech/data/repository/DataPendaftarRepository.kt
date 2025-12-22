@@ -5,6 +5,7 @@ import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.PendaftarListResponse
 import com.example.commitech.data.model.PendaftarResponse
 import com.example.commitech.data.model.PendaftarSingleResponse
+import com.example.commitech.data.model.PesertaLulusCountResponse
 import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -56,6 +57,14 @@ class DataPendaftarRepository {
     
     suspend fun getPesertaLulusTanpaJadwal(token: String): Response<PendaftarListResponse> {
         return apiService.getPesertaLulusTanpaJadwal("Bearer $token")
+    }
+
+    suspend fun getCountPesertaLulus(token: String): Response<PesertaLulusCountResponse> {
+        return apiService.getCountPesertaLulus("Bearer $token")
+    }
+
+    suspend fun getPesertaPendingWawancara(token: String): Response<PendaftarListResponse> {
+        return apiService.getPesertaPendingWawancara("Bearer $token")
     }
 }
 

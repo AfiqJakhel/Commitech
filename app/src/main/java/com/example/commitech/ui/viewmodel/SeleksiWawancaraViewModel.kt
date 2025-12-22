@@ -150,6 +150,24 @@ class SeleksiWawancaraViewModel : ViewModel() {
     private val _pesertaLulusError = MutableStateFlow<String?>(null)
     val pesertaLulusError: StateFlow<String?> = _pesertaLulusError.asStateFlow()
 
+    private val _pesertaLulusCount = MutableStateFlow(0)
+    val pesertaLulusCount: StateFlow<Int> = _pesertaLulusCount.asStateFlow()
+
+    private val _isLoadingPesertaLulusCount = MutableStateFlow(false)
+    val isLoadingPesertaLulusCount: StateFlow<Boolean> = _isLoadingPesertaLulusCount.asStateFlow()
+
+    private val _pesertaLulusCountError = MutableStateFlow<String?>(null)
+    val pesertaLulusCountError: StateFlow<String?> = _pesertaLulusCountError.asStateFlow()
+
+    private val _pesertaPendingWawancara = MutableStateFlow<List<PendaftarResponse>>(emptyList())
+    val pesertaPendingWawancara: StateFlow<List<PendaftarResponse>> = _pesertaPendingWawancara.asStateFlow()
+
+    private val _isLoadingPesertaPendingWawancara = MutableStateFlow(false)
+    val isLoadingPesertaPendingWawancara: StateFlow<Boolean> = _isLoadingPesertaPendingWawancara.asStateFlow()
+
+    private val _pesertaPendingWawancaraError = MutableStateFlow<String?>(null)
+    val pesertaPendingWawancaraError: StateFlow<String?> = _pesertaPendingWawancaraError.asStateFlow()
+
     init {
         // Init kosong - data akan di-load dari database saat screen dibuka
         // Mock data dihapus, diganti dengan load dari database
@@ -185,6 +203,66 @@ class SeleksiWawancaraViewModel : ViewModel() {
             } catch (e: Exception) {
                 _pesertaLulusError.value = "Error: ${e.message}"
                 _isLoadingPesertaLulus.value = false
+            }
+        }
+    }
+
+    fun loadPesertaPendingWawancara(token: String?) {
+        if (token == null) {
+            _pesertaPendingWawancaraError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoadingPesertaPendingWawancara.value = true
+            _pesertaPendingWawancaraError.value = null
+
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    dataPendaftarRepository.getPesertaPendingWawancara(token)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    _pesertaPendingWawancara.value = body.data
+                    _isLoadingPesertaPendingWawancara.value = false
+                } else {
+                    _pesertaPendingWawancaraError.value = "Gagal memuat peserta pending wawancara. Status: ${response.code()}"
+                    _isLoadingPesertaPendingWawancara.value = false
+                }
+            } catch (e: Exception) {
+                _pesertaPendingWawancaraError.value = "Error: ${e.message}"
+                _isLoadingPesertaPendingWawancara.value = false
+            }
+        }
+    }
+
+    fun loadCountPesertaLulus(token: String?) {
+        if (token == null) {
+            _pesertaLulusCountError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoadingPesertaLulusCount.value = true
+            _pesertaLulusCountError.value = null
+
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    dataPendaftarRepository.getCountPesertaLulus(token)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    _pesertaLulusCount.value = body.data.count
+                    _isLoadingPesertaLulusCount.value = false
+                } else {
+                    _pesertaLulusCountError.value = "Gagal memuat jumlah peserta lulus. Status: ${response.code()}"
+                    _isLoadingPesertaLulusCount.value = false
+                }
+            } catch (e: Exception) {
+                _pesertaLulusCountError.value = "Error: ${e.message}"
+                _isLoadingPesertaLulusCount.value = false
             }
         }
     }
