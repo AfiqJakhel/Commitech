@@ -17,6 +17,8 @@ import java.util.Locale
 
 // Import untuk Peserta
 import com.example.commitech.ui.viewmodel.Peserta
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.time.delay
 
 data class Jadwal(
     val id: Int,
@@ -281,7 +283,9 @@ class JadwalViewModel : ViewModel() {
                                         suratKomitmen = pendaftar.suratKomitmen?.toString(),
                                         lulusBerkas = true, // Peserta di jadwal sudah lulus berkas
                                         ditolak = false,
-                                        statusSeleksiBerkas = "lulus" // Default lulus karena sudah di jadwal
+                                        statusSeleksiBerkas = "lulus", // Default lulus karena sudah di jadwal
+                                        statusWawancara = pendaftar.statusWawancara ?: "pending",
+                                        tanggalJadwal = pendaftar.tanggalJadwal
                                     )
                                 } catch (e: Exception) {
                                     Log.e("JadwalViewModel", "Error converting peserta ${pendaftar.id}: ${e.message}", e)
@@ -319,8 +323,30 @@ class JadwalViewModel : ViewModel() {
     }
 
     fun setAuthToken(token: String) {
+        // Hanya fetch jika token berubah atau jadwal masih kosong
+        val tokenChanged = authToken != token
         authToken = token
-        fetchJadwal()
+        
+        // Hanya fetch jika token berubah atau daftar jadwal masih kosong
+        if (tokenChanged || _daftarJadwal.isEmpty()) {
+            fetchJadwal()
+            // Load peserta untuk semua jadwal setelah fetch jadwal selesai
+            viewModelScope.launch {
+                delay(500) // Tunggu fetchJadwal selesai
+                _daftarJadwal.forEach { jadwal ->
+                    loadPesertaFromJadwal(jadwal.id)
+                }
+            }
+        } else {
+            // Jika token tidak berubah tapi peserta belum di-load, load sekarang
+            viewModelScope.launch {
+                _daftarJadwal.forEach { jadwal ->
+                    if (_pesertaPerJadwal[jadwal.id].isNullOrEmpty()) {
+                        loadPesertaFromJadwal(jadwal.id)
+                    }
+                }
+            }
+        }
     }
 
     private fun mapRemoteToLocal(item: JadwalRekrutmenItem): Jadwal {

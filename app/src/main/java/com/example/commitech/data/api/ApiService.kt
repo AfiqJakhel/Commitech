@@ -164,6 +164,31 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<HasilWawancaraListResponse>
     
+    /**
+     * Fitur 17: Ubah hasil wawancara (Update)
+     * 
+     * Endpoint: PUT /api/wawancara/hasil/{id}
+     * 
+     * Mengubah hasil wawancara yang sudah ada.
+     * 
+     * @param token Token autentikasi (dengan prefix "Bearer")
+     * @param id ID hasil wawancara yang akan diubah
+     * @param request Request body berisi data hasil wawancara yang baru
+     * @return Response yang berisi data hasil wawancara yang sudah diubah
+     * 
+     * Status Code:
+     * - 200: OK - Hasil wawancara berhasil diubah
+     * - 404: Not Found - Data tidak ditemukan
+     * - 422: Unprocessable Entity - Validation error
+     * - 401: Unauthorized - Token invalid/expired
+     */
+    @PUT("api/wawancara/hasil/{id}")
+    suspend fun ubahHasilWawancara(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: HasilWawancaraRequest
+    ): Response<HasilWawancaraSingleResponse>
+    
     // ==========================================
     // API Jadwal Rekrutmen
     // ==========================================

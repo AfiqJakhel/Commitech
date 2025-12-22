@@ -2,6 +2,13 @@ package com.example.commitech.ui.viewmodel
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.commitech.data.model.HasilWawancaraRequest
+import com.example.commitech.data.repository.HasilWawancaraRepository
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class InterviewStatus {
     PENDING,
@@ -32,6 +39,14 @@ class PengumumanViewModel : ViewModel() {
     )
 
     val daftarDivisi: List<DivisiData> get() = _daftarDivisi
+    
+    private val hasilWawancaraRepository = HasilWawancaraRepository()
+    
+    private val _isLoadingFromDatabase = MutableStateFlow(false)
+    val isLoadingFromDatabase: StateFlow<Boolean> = _isLoadingFromDatabase.asStateFlow()
+    
+    private val _loadError = MutableStateFlow<String?>(null)
+    val loadError: StateFlow<String?> = _loadError.asStateFlow()
 
     fun getKoordinator(divisi: String): String {
         return _daftarDivisi.find { it.namaDivisi == divisi }?.koordinator ?: "-"
@@ -43,7 +58,63 @@ class PengumumanViewModel : ViewModel() {
 
     fun getAllDivisiNames(): List<String> = _daftarDivisi.map { it.namaDivisi }
 
-    // Sinkronisasi data dari SeleksiWawancaraViewModel
+    /**
+     * Load data peserta lulus langsung dari database (hasil_wawancara)
+     * Ini lebih reliable daripada sync dari SeleksiWawancaraViewModel
+     */
+    fun loadPesertaLulusFromDatabase(token: String?) {
+        if (token == null) {
+            _loadError.value = "Token tidak tersedia. Silakan login ulang."
+            return
+        }
+        
+        viewModelScope.launch {
+            _isLoadingFromDatabase.value = true
+            _loadError.value = null
+            
+            try {
+                val response = hasilWawancaraRepository.getHasilWawancara(token)
+                
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    if (body.sukses && body.data != null) {
+                        // Hapus semua peserta yang ada
+                        _daftarDivisi.forEach { it.pesertaLulus.clear() }
+                        
+                        // Filter hanya peserta yang diterima dengan divisi
+                        val acceptedResults = body.data.filter { 
+                            it.status == "diterima" && !it.divisi.isNullOrBlank()
+                        }
+                        
+                        // Tambahkan ke divisi yang sesuai
+                        acceptedResults.forEach { hasil ->
+                            val targetDivisi = _daftarDivisi.find { it.namaDivisi == hasil.divisi }
+                            targetDivisi?.pesertaLulus?.add(
+                                ParticipantInfo(
+                                    name = hasil.namaPeserta,
+                                    status = InterviewStatus.ACCEPTED,
+                                    division = hasil.divisi ?: ""
+                                )
+                            )
+                        }
+                        
+                        _isLoadingFromDatabase.value = false
+                    } else {
+                        _loadError.value = body.pesan ?: "Gagal memuat data"
+                        _isLoadingFromDatabase.value = false
+                    }
+                } else {
+                    _loadError.value = "Gagal memuat data dari database. Status: ${response.code()}"
+                    _isLoadingFromDatabase.value = false
+                }
+            } catch (e: Exception) {
+                _loadError.value = "Error: ${e.message}"
+                _isLoadingFromDatabase.value = false
+            }
+        }
+    }
+    
+    // Sinkronisasi data dari SeleksiWawancaraViewModel (untuk backward compatibility)
     fun syncFromSeleksiWawancara(seleksiViewModel: SeleksiWawancaraViewModel) {
         // Hapus semua peserta yang ada
         _daftarDivisi.forEach { it.pesertaLulus.clear() }
@@ -74,6 +145,80 @@ class PengumumanViewModel : ViewModel() {
     fun updateParticipantDivisionAndStatus(
         name: String, 
         divisi: String, 
+        status: InterviewStatus,
+        seleksiViewModel: SeleksiWawancaraViewModel,
+        token: String? = null,
+        onSuccess: (() -> Unit)? = null,
+        onError: ((String) -> Unit)? = null
+    ) {
+        // Cari peserta di SeleksiWawancaraViewModel untuk mendapatkan pesertaId
+        val participant = seleksiViewModel.getAllParticipants().find { it.name == name }
+        if (participant?.pesertaId == null) {
+            onError?.invoke("Peserta tidak ditemukan atau pesertaId tidak tersedia")
+            return
+        }
+        
+        val pesertaId = participant.pesertaId!!
+        
+        // Jika token tersedia, update ke backend terlebih dahulu
+        if (token != null) {
+            // Cari hasil wawancara yang sudah ada untuk mendapatkan hasilWawancaraId
+            val hasilWawancara = seleksiViewModel.getHasilWawancaraByPesertaId(pesertaId)
+            if (hasilWawancara != null) {
+                // Update ke backend
+                viewModelScope.launch {
+                    try {
+                        val request = HasilWawancaraRequest(
+                            pesertaId = pesertaId,
+                            status = when (status) {
+                                InterviewStatus.ACCEPTED -> "diterima"
+                                InterviewStatus.REJECTED -> "ditolak"
+                                InterviewStatus.PENDING -> "pending"
+                            },
+                            divisi = if (status == InterviewStatus.ACCEPTED) divisi else null,
+                            alasan = if (status == InterviewStatus.REJECTED) "Diubah menjadi ditolak" else null
+                        )
+                        
+                        val response = hasilWawancaraRepository.ubahHasilWawancara(
+                            token = token,
+                            id = hasilWawancara.id,
+                            request = request
+                        )
+                        
+                        if (response.isSuccessful && response.body() != null) {
+                            val responseBody = response.body()!!
+                            if (responseBody.sukses && responseBody.data != null) {
+                                // Refresh data dari database untuk memastikan sinkronisasi
+                                seleksiViewModel.loadHasilWawancaraAndUpdateStatus(token)
+                                
+                                // Update local state setelah berhasil update ke backend
+                                updateLocalState(name, divisi, status, seleksiViewModel)
+                                onSuccess?.invoke()
+                            } else {
+                                onError?.invoke(responseBody.pesan ?: "Gagal mengubah hasil wawancara")
+                            }
+                        } else {
+                            val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                            onError?.invoke("Gagal mengubah hasil wawancara: ${response.code()} - $errorBody")
+                        }
+                    } catch (e: Exception) {
+                        onError?.invoke("Error: ${e.message}")
+                    }
+                }
+            } else {
+                // Jika belum ada hasil wawancara, buat baru
+                onError?.invoke("Hasil wawancara untuk peserta ini belum ada. Silakan terima peserta terlebih dahulu.")
+            }
+        } else {
+            // Jika token tidak tersedia, hanya update local state
+            updateLocalState(name, divisi, status, seleksiViewModel)
+            onSuccess?.invoke()
+        }
+    }
+    
+    private fun updateLocalState(
+        name: String,
+        divisi: String,
         status: InterviewStatus,
         seleksiViewModel: SeleksiWawancaraViewModel
     ) {

@@ -59,13 +59,24 @@ class DetailJadwalWawancaraViewModel : ViewModel() {
      */
     fun initPesertaState(peserta: Peserta) {
         val key = peserta.id?.toString() ?: peserta.nama
+        val statusWawancara = peserta.statusWawancara?.lowercase() ?: "pending"
+        val initialStatus = when {
+            statusWawancara == "diterima" -> InterviewStatus.ACCEPTED
+            statusWawancara == "ditolak" -> InterviewStatus.REJECTED
+            else -> InterviewStatus.PENDING
+        }
+        
         if (!_pesertaStates.containsKey(key)) {
             _pesertaStates[key] = PesertaWawancaraState(
                 pesertaId = peserta.id,
                 nama = peserta.nama,
+                status = initialStatus,
                 durationMinutes = 6,
                 remainingSeconds = 6 * 60
             )
+        } else {
+            // Update status jika sudah ada state
+            _pesertaStates[key]?.status = initialStatus
         }
     }
     
@@ -298,7 +309,10 @@ class DetailJadwalWawancaraViewModel : ViewModel() {
                             divisi = divisi
                         )
                         _saveHasilSuccess.value = "Peserta ${peserta.nama} berhasil diterima dan dimasukkan ke divisi $divisi"
-                        // Trigger timer tick untuk update UI
+                        // Trigger timer tick untuk update UI (refresh card)
+                        _timerTick.value = System.currentTimeMillis()
+                        // Trigger recomposition dengan update state lagi
+                        delay(100)
                         _timerTick.value = System.currentTimeMillis()
                     } else {
                         _saveHasilError.value = responseBody.pesan ?: "Gagal menyimpan hasil wawancara"
@@ -365,7 +379,10 @@ class DetailJadwalWawancaraViewModel : ViewModel() {
                             alasan = "Tidak lulus wawancara"
                         )
                         _saveHasilSuccess.value = "Peserta ${peserta.nama} berhasil ditolak"
-                        // Trigger timer tick untuk update UI
+                        // Trigger timer tick untuk update UI (refresh card)
+                        _timerTick.value = System.currentTimeMillis()
+                        // Trigger recomposition dengan update state lagi
+                        delay(100)
                         _timerTick.value = System.currentTimeMillis()
                     } else {
                         _saveHasilError.value = responseBody.pesan ?: "Gagal menyimpan hasil wawancara"

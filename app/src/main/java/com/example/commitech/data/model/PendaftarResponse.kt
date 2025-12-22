@@ -80,7 +80,9 @@ data class PendaftarResponse(
     @SerializedName("lokasi")
     val lokasi: String?,
     @SerializedName("status_seleksi_berkas")
-    val statusSeleksiBerkas: String?
+    val statusSeleksiBerkas: String?,
+    @SerializedName("status_wawancara")
+    val statusWawancara: String? // pending, diterima, ditolak
 )
 
 data class PendaftarListResponse(

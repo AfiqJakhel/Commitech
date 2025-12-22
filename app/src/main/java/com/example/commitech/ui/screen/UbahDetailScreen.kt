@@ -29,7 +29,8 @@ fun UbahDetailScreen(
     navController: NavController,
     namaPeserta: String,
     viewModel: PengumumanViewModel,
-    seleksiViewModel: SeleksiWawancaraViewModel
+    seleksiViewModel: SeleksiWawancaraViewModel,
+    token: String? = null
 ) {
     var selectedDivisi by remember { mutableStateOf("") }
     var selectedStatus by remember { mutableStateOf("Diterima") }
@@ -315,9 +316,42 @@ fun UbahDetailScreen(
             }
 
             // Tombol Simpan
+            var isLoading by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            
+            // Tampilkan error jika ada
+            errorMessage?.let { error ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFEBEE)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            error,
+                            fontSize = 13.sp,
+                            color = Color(0xFFD32F2F),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            
             Button(
                 onClick = {
-                    if (selectedDivisi.isNotBlank()) {
+                    if (selectedDivisi.isNotBlank() && !isLoading) {
+                        isLoading = true
+                        errorMessage = null
+                        
                         val newStatus =
                             if (selectedStatus == "Ditolak") InterviewStatus.REJECTED else InterviewStatus.ACCEPTED
 
@@ -325,14 +359,20 @@ fun UbahDetailScreen(
                             name = namaPeserta,
                             divisi = selectedDivisi,
                             status = newStatus,
-                            seleksiViewModel = seleksiViewModel
+                            seleksiViewModel = seleksiViewModel,
+                            token = token,
+                            onSuccess = {
+                                isLoading = false
+                                // Sync ulang setelah update
+                                viewModel.syncFromSeleksiWawancara(seleksiViewModel)
+                                // Navigasi balik
+                                navController.popBackStack()
+                            },
+                            onError = { error ->
+                                isLoading = false
+                                errorMessage = error
+                            }
                         )
-
-                        // Sync ulang setelah update
-                        viewModel.syncFromSeleksiWawancara(seleksiViewModel)
-
-                        // Navigasi balik
-                        navController.popBackStack()
                     }
                 },
                 modifier = Modifier
@@ -343,14 +383,22 @@ fun UbahDetailScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colorScheme.primary
                 ),
-                enabled = selectedDivisi.isNotBlank()
+                enabled = selectedDivisi.isNotBlank() && !isLoading
             ) {
-                Text(
-                    "Simpan Perubahan",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        "Simpan Perubahan",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             
             Spacer(Modifier.height(20.dp))

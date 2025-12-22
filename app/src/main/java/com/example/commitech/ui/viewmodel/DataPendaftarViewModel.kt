@@ -67,7 +67,8 @@ fun Pendaftar.toPendaftarResponse(): PendaftarResponse {
         tanggalJadwal = null,
         waktuJadwal = null,
         lokasi = null,
-        statusSeleksiBerkas = null
+        statusSeleksiBerkas = null,
+        statusWawancara = null,
     )
 }
 
