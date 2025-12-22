@@ -2,6 +2,7 @@ package com.example.commitech.ui.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.commitech.data.api.ApiService
@@ -41,6 +42,10 @@ class JadwalViewModel : ViewModel() {
     private val _pesertaPerJadwal = mutableMapOf<Int, MutableList<Peserta>>()
     val pesertaPerJadwal: Map<Int, List<Peserta>> get() = _pesertaPerJadwal
     
+    // StateFlow untuk trigger recomposition ketika pesertaPerJadwal berubah
+    private val _pesertaPerJadwalUpdateTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val pesertaPerJadwalUpdateTrigger: kotlinx.coroutines.flow.StateFlow<Int> = _pesertaPerJadwalUpdateTrigger.asStateFlow()
+    
     fun getPesertaByJadwalId(jadwalId: Int): List<Peserta> {
         return _pesertaPerJadwal[jadwalId] ?: emptyList()
     }
@@ -77,6 +82,8 @@ class JadwalViewModel : ViewModel() {
             // Cek maksimal 5 peserta
             if (currentList.size < 5) {
                 currentList.add(peserta)
+                // Trigger recomposition
+                _pesertaPerJadwalUpdateTrigger.value++
             }
         }
     }
@@ -86,6 +93,8 @@ class JadwalViewModel : ViewModel() {
         
         // Hapus dari local state dulu untuk immediate UI update
         _pesertaPerJadwal[jadwalId]?.removeAll { it.nama == namaPeserta }
+        // Trigger recomposition setelah menghapus
+        _pesertaPerJadwalUpdateTrigger.value++
         
         // Hapus dari database juga jika ada ID
         if (authToken.isNotBlank() && peserta?.id != null) {
@@ -119,6 +128,8 @@ class JadwalViewModel : ViewModel() {
         // Maksimal 5 peserta
         val pesertaTerbatas = pesertaList.take(5)
         _pesertaPerJadwal[jadwalId] = pesertaTerbatas.toMutableList()
+        // Trigger recomposition
+        _pesertaPerJadwalUpdateTrigger.value++
         
         // Simpan ke database via API
         if (authToken.isNotBlank() && pesertaTerbatas.isNotEmpty()) {
@@ -288,6 +299,8 @@ class JadwalViewModel : ViewModel() {
                             }
                             
                             _pesertaPerJadwal[jadwalId] = peserta.toMutableList()
+                            // Trigger recomposition
+                            _pesertaPerJadwalUpdateTrigger.value++
                             Log.d("JadwalViewModel", "Berhasil load ${peserta.size} peserta dari jadwal $jadwalId")
                         } catch (e: Exception) {
                             Log.e("JadwalViewModel", "Error processing peserta list: ${e.message}", e)

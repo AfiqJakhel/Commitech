@@ -283,7 +283,8 @@ fun AppNavGraph(
                 jadwal = jadwal,
                 seleksiBerkasViewModel = seleksiBerkasViewModel,
                 jadwalViewModel = jadwalViewModel,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                seleksiWawancaraViewModel = seleksiWawancaraViewModel
             )
         }
 

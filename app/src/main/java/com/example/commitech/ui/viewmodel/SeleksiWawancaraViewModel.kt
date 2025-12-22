@@ -110,6 +110,13 @@ class SeleksiWawancaraViewModel : ViewModel() {
     // Track jadwal yang sudah di-merge untuk menghindari duplikasi
     private val mergedJadwalIds = mutableSetOf<Int>()
     
+    // Map untuk menyimpan hasil wawancara per peserta ID
+    private val hasilWawancaraMap = mutableMapOf<Int, com.example.commitech.data.model.HasilWawancaraResponse>()
+    
+    // StateFlow untuk menyimpan list semua hasil wawancara dari database (untuk tab Status)
+    private val _hasilWawancaraList = MutableStateFlow<List<com.example.commitech.data.model.HasilWawancaraResponse>>(emptyList())
+    val hasilWawancaraList: StateFlow<List<com.example.commitech.data.model.HasilWawancaraResponse>> = _hasilWawancaraList.asStateFlow()
+    
     // State untuk loading jadwal dari database
     private val _isLoadingJadwal = MutableStateFlow(false)
     val isLoadingJadwal: StateFlow<Boolean> = _isLoadingJadwal.asStateFlow()
@@ -234,6 +241,9 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     it.tanggalJadwal != null && it.tanggalJadwal.isNotBlank()
                 }
                 
+                // Load hasil wawancara dari database terlebih dahulu
+                loadHasilWawancaraAndUpdateStatusInternal(token)
+                
                 // Group peserta berdasarkan tanggal_jadwal
                 val groupedByDate = pesertaDenganJadwal.groupBy { it.tanggalJadwal!! }
                 
@@ -249,7 +259,7 @@ class SeleksiWawancaraViewModel : ViewModel() {
                     // Sort peserta berdasarkan waktu_jadwal
                     val sortedPeserta = pesertaList.sortedBy { it.waktuJadwal ?: "" }
                     
-                    // Map peserta ke ParticipantData
+                    // Map peserta ke ParticipantData dengan status dari hasil wawancara
                     val participants = sortedPeserta.map { peserta ->
                         val waktuJadwal = peserta.waktuJadwal ?: "00.00"
                         val waktuFormatted = if (waktuJadwal.contains("WIB")) {
@@ -258,11 +268,21 @@ class SeleksiWawancaraViewModel : ViewModel() {
                             "$waktuJadwal WIB"
                         }
                         
+                        // Cek status dari hasil wawancara jika ada
+                        val hasilWawancara = hasilWawancaraMap[peserta.id]
+                        val status = when (hasilWawancara?.status) {
+                            "diterima" -> InterviewStatus.ACCEPTED
+                            "ditolak" -> InterviewStatus.REJECTED
+                            else -> InterviewStatus.PENDING
+                        }
+                        
                         ParticipantData(
                             time = waktuFormatted,
                             name = peserta.nama ?: "Nama tidak diketahui",
                             pesertaId = peserta.id,
-                            status = InterviewStatus.PENDING, // Default status
+                            status = status,
+                            division = hasilWawancara?.divisi ?: "",
+                            reason = hasilWawancara?.alasan ?: "",
                             durationMinutes = 6  // Durasi wawancara 6 menit
                         )
                     }
@@ -290,6 +310,64 @@ class SeleksiWawancaraViewModel : ViewModel() {
                 _jadwalError.value = "Terjadi kesalahan: ${e.message ?: "Unknown error"}"
                 _isLoadingJadwal.value = false
             }
+        }
+    }
+    
+    /**
+     * Load hasil wawancara dari database dan update status peserta
+     * Fungsi ini bisa dipanggil dari luar untuk refresh data
+     */
+    fun loadHasilWawancaraAndUpdateStatus(token: String) {
+        viewModelScope.launch {
+            loadHasilWawancaraAndUpdateStatusInternal(token)
+        }
+    }
+    
+    /**
+     * Internal function untuk load hasil wawancara
+     */
+    private suspend fun loadHasilWawancaraAndUpdateStatusInternal(token: String) {
+        try {
+            val response = hasilWawancaraRepository.getHasilWawancara(token)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.sukses && body.data != null) {
+                    // Clear map dan isi dengan data baru
+                    hasilWawancaraMap.clear()
+                    body.data.forEach { hasil ->
+                        hasilWawancaraMap[hasil.pesertaId] = hasil
+                    }
+                    
+                    // Update StateFlow untuk tab Status (langsung dari database)
+                    _hasilWawancaraList.value = body.data
+                    
+                    // Update status peserta di days
+                    _days.forEachIndexed { dayIndex, day ->
+                        val updatedParticipants = day.participants.map { participant ->
+                            val hasil = hasilWawancaraMap[participant.pesertaId]
+                            if (hasil != null) {
+                                val newStatus = when (hasil.status) {
+                                    "diterima" -> InterviewStatus.ACCEPTED
+                                    "ditolak" -> InterviewStatus.REJECTED
+                                    else -> InterviewStatus.PENDING
+                                }
+                                participant.copy(
+                                    status = newStatus,
+                                    division = hasil.divisi ?: "",
+                                    reason = hasil.alasan ?: ""
+                                )
+                            } else {
+                                participant
+                            }
+                        }
+                        _days[dayIndex] = day.copy(participants = updatedParticipants)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Silent fail - tidak perlu menampilkan error jika gagal load hasil wawancara
+            // Status akan tetap PENDING
         }
     }
     
@@ -425,6 +503,29 @@ class SeleksiWawancaraViewModel : ViewModel() {
     fun totalParticipants(): Int = _days.sumOf { it.participants.size }
 
     fun getAllParticipants(): List<ParticipantData> = days.flatMap { it.participants }
+    
+    /**
+     * Mendapatkan semua hasil wawancara dari database berdasarkan status
+     * Digunakan untuk tab Status di SeleksiWawancaraScreen
+     * 
+     * @param statusFilter Filter berdasarkan status (null = semua status)
+     * @return List hasil wawancara yang sudah difilter
+     */
+    fun getHasilWawancaraByStatus(statusFilter: InterviewStatus? = null): List<com.example.commitech.data.model.HasilWawancaraResponse> {
+        val allHasil = _hasilWawancaraList.value
+        
+        if (statusFilter == null) {
+            return allHasil
+        }
+        
+        return allHasil.filter { hasil ->
+            when (statusFilter) {
+                InterviewStatus.ACCEPTED -> hasil.status == "diterima"
+                InterviewStatus.REJECTED -> hasil.status == "ditolak"
+                InterviewStatus.PENDING -> hasil.status == "pending"
+            }
+        }
+    }
     
     /**
      * Merge peserta dari jadwal rekrutmen ke dalam days

@@ -3,6 +3,7 @@ package com.example.commitech.data.repository
 import com.example.commitech.data.api.RetrofitClient
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
+import com.example.commitech.data.model.HasilWawancaraListResponse
 import retrofit2.Response
 
 /**
@@ -55,6 +56,18 @@ class HasilWawancaraRepository {
     ): Response<HasilWawancaraSingleResponse> {
         // Token sudah termasuk prefix "Bearer" di ApiService
         return apiService.simpanHasilWawancara("Bearer $token", request)
+    }
+    
+    /**
+     * Memuat semua hasil wawancara dari backend via API
+     * 
+     * @param token Token autentikasi dari AuthViewModel (tanpa prefix "Bearer")
+     * @return Response dari backend yang berisi HasilWawancaraListResponse
+     */
+    suspend fun getHasilWawancara(
+        token: String
+    ): Response<HasilWawancaraListResponse> {
+        return apiService.getHasilWawancara("Bearer $token")
     }
 }
 

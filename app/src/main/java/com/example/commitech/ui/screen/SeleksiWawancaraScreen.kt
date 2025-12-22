@@ -102,6 +102,7 @@ import com.example.commitech.ui.viewmodel.InterviewStatus
 import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
+import com.example.commitech.data.model.HasilWawancaraResponse
 import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.collectAsState
 import android.app.TimePickerDialog
@@ -119,14 +120,14 @@ import java.util.Locale
 
 /**
  * Screen untuk Seleksi Wawancara
- * 
+ *
  * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
- * 
+ *
  * Screen ini menampilkan:
  * - Jadwal wawancara per hari
  * - Status hasil wawancara
  * - Fitur untuk Accept/Reject peserta dengan integrasi backend API
- * 
+ *
  * @param viewModel ViewModel untuk mengelola state dan logika seleksi wawancara
  * @param authViewModel ViewModel untuk autentikasi (diperlukan untuk token API)
  * @param onBackClick Callback saat tombol back ditekan
@@ -147,19 +148,19 @@ fun SeleksiWawancaraScreen(
     val colorScheme = MaterialTheme.colorScheme
     val totalPeserta = viewModel.totalParticipants()
     val context = LocalContext.current
-    
+
     // Collect auth state untuk token
     val authState by authViewModel.authState.collectAsState()
-    
+
     // Collect state untuk hasil wawancara API call
     val isSavingHasil by viewModel.isSavingHasil.collectAsState()
     val saveHasilError by viewModel.saveHasilError.collectAsState()
     val saveHasilSuccess by viewModel.saveHasilSuccess.collectAsState()
-    
+
     // Collect state untuk loading jadwal dari database
     val isLoadingJadwal by viewModel.isLoadingJadwal.collectAsState()
     val jadwalError by viewModel.jadwalError.collectAsState()
-    
+
     // Snackbar host state untuk success message
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -190,11 +191,11 @@ fun SeleksiWawancaraScreen(
     // - Jika admin lain ubah jadwal, user tidak akan lihat update
     // - Lebih baik reload setiap kali token berubah untuk data yang fresh
     // ============================================================================
-    
+
     LaunchedEffect(authState.token) {
         // Ensure notification channels dibuat (untuk local notifications)
         InterviewNotificationHelper.ensureChannels(context)
-        
+
         // Load jadwal dari database jika token tersedia
         authState.token?.let { token ->
             // CRITICAL: Tidak ada check isEmpty() lagi!
@@ -202,6 +203,8 @@ fun SeleksiWawancaraScreen(
             // Ini memastikan data selalu fresh dan tidak ada race condition
             viewModel.loadJadwalWawancaraFromDatabase(token)
             viewModel.loadPesertaLulusTanpaJadwal(token)
+            // Load hasil wawancara untuk update status
+            viewModel.loadHasilWawancaraAndUpdateStatus(token)
             // Load jadwal rekrutmen juga
             jadwalViewModel?.setAuthToken(token)
         }
@@ -223,14 +226,14 @@ fun SeleksiWawancaraScreen(
             when (event) {
                 is InterviewEvent.FiveMinuteWarning -> {
                     triggerWarningVibration(context)
-                    
+
                     // Tampilkan notifikasi di drawer
                     InterviewNotificationHelper.showWarningNotification(
                         context = context,
                         participantName = event.participantName,
                         scheduleLabel = event.scheduleLabel
                     )
-                    
+
                     // Tampilkan Snackbar di layar
                     snackbarHostState.showSnackbar(
                         message = "Wawancara ${event.participantName} tersisa 5 menit lagi",
@@ -248,7 +251,7 @@ fun SeleksiWawancaraScreen(
             }
         }
     }
-    
+
     // Success snackbar handler
     LaunchedEffect(saveHasilSuccess) {
         saveHasilSuccess?.let { message ->
@@ -259,7 +262,7 @@ fun SeleksiWawancaraScreen(
             viewModel.clearSaveHasilSuccess()
         }
     }
-    
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(
@@ -301,115 +304,116 @@ fun SeleksiWawancaraScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-            // Header Card dengan Total Peserta
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .shadow(6.dp, RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = colorScheme.surface
-                )
-            ) {
-                Row(
+                // Header Card dengan Total Peserta
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .shadow(6.dp, RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorScheme.surface
+                    )
                 ) {
-                    Column {
-                        Text(
-                            "Total Peserta",
-                            fontSize = 14.sp,
-                            color = colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            "$totalPeserta Peserta",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = colorScheme.primary
-                        )
-                    }
-                    
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(56.dp)
-                            .background(
-                                colorScheme.primary.copy(alpha = 0.1f),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.People,
-                            contentDescription = null,
-                            tint = colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
+                        Column {
+                            Text(
+                                "Total Peserta",
+                                fontSize = 14.sp,
+                                color = colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "$totalPeserta Peserta",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = colorScheme.primary
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(
+                                    colorScheme.primary.copy(alpha = 0.1f),
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.People,
+                                contentDescription = null,
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Modern Tabs
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = colorScheme.background,
+                    contentColor = colorScheme.primary,
+                    indicator = { tabPositions ->
+                        if (selectedTab < tabPositions.size) {
+                            Box(
+                                Modifier
+                                    .tabIndicatorOffset(tabPositions[selectedTab])
+                                    .height(4.dp)
+                                    .padding(horizontal = 40.dp)
+                                    .background(
+                                        color = colorScheme.primary,
+                                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                                    )
+                            )
+                        }
+                    },
+                    divider = {}
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            text = {
+                                Text(
+                                    title,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 16.sp,
+                                    color = if (selectedTab == index) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         )
                     }
                 }
-            }
-            
-            // Modern Tabs
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = colorScheme.background,
-                contentColor = colorScheme.primary,
-                indicator = { tabPositions ->
-                    if (selectedTab < tabPositions.size) {
-                        Box(
-                            Modifier
-                                .tabIndicatorOffset(tabPositions[selectedTab])
-                                .height(4.dp)
-                                .padding(horizontal = 40.dp)
-                                .background(
-                                    color = colorScheme.primary,
-                                    shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
-                                )
-                        )
-                    }
-                },
-                divider = {}
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        modifier = Modifier.padding(vertical = 12.dp),
-                        text = {
-                            Text(
-                                title,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 16.sp,
-                                color = if (selectedTab == index) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when (selectedTab) {
+                    0 -> WawancaraJadwalContent(
+                        viewModel = viewModel,
+                        authState = authState,
+                        jadwalViewModel = jadwalViewModel,
+                        navController = navController,
+                        seleksiBerkasViewModel = seleksiBerkasViewModel,
+                        modifier = Modifier.weight(1f)
+                    )
+                    1 -> WawancaraStatusContent(
+                        viewModel = viewModel,
+                        authViewModel = authViewModel,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            when (selectedTab) {
-                0 -> WawancaraJadwalContent(
-                    viewModel = viewModel,
-                    authState = authState,
-                    jadwalViewModel = jadwalViewModel,
-                    navController = navController,
-                    seleksiBerkasViewModel = seleksiBerkasViewModel,
-                    modifier = Modifier.weight(1f)
-                )
-                1 -> WawancaraStatusContent(
-                    viewModel = viewModel,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            }
-            
             // ============================================================================
             // CRITICAL FIX #2: Loading Indicator untuk Load Jadwal
             // ============================================================================
@@ -429,7 +433,7 @@ fun SeleksiWawancaraScreen(
             // - Mencegah user tap berulang kali karena bingung
             // - Professional: Setiap async operation harus ada loading state
             // ============================================================================
-            
+
             // Loading indicator saat memuat jadwal dari database
             if (isLoadingJadwal) {
                 Box(
@@ -464,7 +468,7 @@ fun SeleksiWawancaraScreen(
                     }
                 }
             }
-            
+
             // Loading indicator saat menyimpan hasil wawancara
             if (isSavingHasil) {
                 Box(
@@ -499,7 +503,7 @@ fun SeleksiWawancaraScreen(
                     }
                 }
             }
-            
+
             // Error dialog
             saveHasilError?.let { error ->
                 AlertDialog(
@@ -536,9 +540,9 @@ fun SeleksiWawancaraScreen(
 
 /**
  * Content untuk tab Jadwal Wawancara
- * 
+ *
  * Menampilkan daftar jadwal wawancara per hari dalam bentuk expandable card
- * 
+ *
  * @param viewModel ViewModel untuk state management
  * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
  * @param modifier Modifier untuk styling
@@ -554,11 +558,11 @@ fun WawancaraJadwalContent(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val daftarJadwal = jadwalViewModel?.daftarJadwal ?: emptyList()
-    
+
     // Collect state untuk peserta lulus tanpa jadwal
     val pesertaLulusTanpaJadwal = viewModel.pesertaLulusTanpaJadwal
     val isLoadingPesertaLulus by viewModel.isLoadingPesertaLulus.collectAsState()
-    
+
     // Load peserta dari setiap jadwal saat jadwal ditampilkan (dengan delay untuk menghindari terlalu banyak request bersamaan)
     LaunchedEffect(authState.token, daftarJadwal) {
         authState.token?.let { token ->
@@ -571,7 +575,7 @@ fun WawancaraJadwalContent(
             }
         }
     }
-    
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -589,7 +593,7 @@ fun WawancaraJadwalContent(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
-            
+
             items(daftarJadwal) { jadwal ->
                 JadwalRekrutmenCard(
                     jadwal = jadwal,
@@ -602,21 +606,9 @@ fun WawancaraJadwalContent(
                     }
                 )
             }
-            
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(thickness = 1.dp, color = colorScheme.onSurface.copy(alpha = 0.1f))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Jadwal Peserta",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onBackground,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
+
         }
-        
+
         // Jadwal peserta (existing)
         items(viewModel.days.size) { index ->
             ExpandableDayCard(
@@ -691,7 +683,7 @@ fun JadwalRekrutmenCard(
     val colorScheme = MaterialTheme.colorScheme
     val jumlahPeserta = jadwalViewModel?.getPesertaByJadwalId(jadwal.id)?.size ?: 0
     val isJadwalFull = jumlahPeserta >= 5
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -767,7 +759,7 @@ fun JadwalRekrutmenCard(
                         )
                     }
                 }
-                
+
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowRight,
                     contentDescription = "Detail",
@@ -782,12 +774,27 @@ fun JadwalRekrutmenCard(
 @Composable
 fun WawancaraStatusContent(
     viewModel: SeleksiWawancaraViewModel,
+    authViewModel: AuthViewModel,
     modifier: Modifier = Modifier
 ) {
     var filterStatus by remember { mutableStateOf<InterviewStatus?>(null) }
-    val participants = viewModel.getAllParticipants()
-    val filteredList = remember(participants, filterStatus) {
-        if (filterStatus == null) participants else participants.filter { it.status == filterStatus }
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Refresh data hasil wawancara saat tab Status dibuka
+    LaunchedEffect(Unit) {
+        authState.token?.let { token ->
+            viewModel.loadHasilWawancaraAndUpdateStatus(token)
+        }
+    }
+    
+    // Ambil data dari hasil wawancara di database
+    val hasilWawancaraList by viewModel.hasilWawancaraList.collectAsState()
+    
+    // Filter berdasarkan status
+    val filteredList = remember(hasilWawancaraList, filterStatus) {
+        val filtered = viewModel.getHasilWawancaraByStatus(filterStatus)
+        // Sort berdasarkan nama peserta
+        filtered.sortedBy { it.namaPeserta }
     }
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -805,12 +812,41 @@ fun WawancaraStatusContent(
 
         Spacer(Modifier.height(12.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            itemsIndexed(filteredList) { index, p ->
-                StatusRow(no = index + 1, name = p.name, status = p.status)
+        if (filteredList.isEmpty()) {
+            // Empty state
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Text(
+                        text = if (filterStatus == null) "Belum ada data hasil wawancara" 
+                               else "Tidak ada data dengan status ${when(filterStatus) {
+                                   InterviewStatus.ACCEPTED -> "Diterima"
+                                   InterviewStatus.REJECTED -> "Ditolak"
+                                   InterviewStatus.PENDING -> "Pending"
+                                   else -> ""
+                               }}",
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                itemsIndexed(filteredList) { index, hasil ->
+                    StatusRowFromHasilWawancara(
+                        no = index + 1, 
+                        hasilWawancara = hasil
+                    )
+                }
             }
         }
     }
@@ -825,7 +861,7 @@ fun FilterChip(
 ) {
     val selected = selectedStatus == status
     val colorScheme = MaterialTheme.colorScheme
-    
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = if (selected) colorScheme.primary else colorScheme.surface,
@@ -852,7 +888,7 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
         InterviewStatus.REJECTED -> Color(0xFFD32F2F)
         else -> Color(0xFFFF9800)
     }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -886,9 +922,9 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
                     color = colorScheme.primary
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // Name
             Text(
                 name,
@@ -897,9 +933,9 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
                 fontSize = 15.sp,
                 color = colorScheme.onSurface
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // Status Badge
             Surface(
                 shape = RoundedCornerShape(12.dp),
@@ -922,13 +958,153 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
 }
 
 /**
+ * StatusRow untuk menampilkan data dari hasil wawancara (dari database)
+ * Menampilkan data diri pendaftar lengkap dengan status, divisi (jika diterima), atau alasan (jika ditolak)
+ */
+@Composable
+fun StatusRowFromHasilWawancara(
+    no: Int,
+    hasilWawancara: HasilWawancaraResponse
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val status = when (hasilWawancara.status) {
+        "diterima" -> InterviewStatus.ACCEPTED
+        "ditolak" -> InterviewStatus.REJECTED
+        else -> InterviewStatus.PENDING
+    }
+    val statusColor = when (status) {
+        InterviewStatus.ACCEPTED -> Color(0xFF4CAF50)
+        InterviewStatus.REJECTED -> Color(0xFFD32F2F)
+        else -> Color(0xFFFF9800)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Number Badge
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            colorScheme.primary.copy(alpha = 0.1f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "$no",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Name (Data diri pendaftar)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        hasilWawancara.namaPeserta,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = colorScheme.onSurface
+                    )
+                    
+                    // Tampilkan info tambahan jika ada
+                    if (hasilWawancara.tanggalJadwal != null && hasilWawancara.tanggalJadwal != "-") {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${hasilWawancara.tanggalJadwal}${if (hasilWawancara.waktuJadwal != null && hasilWawancara.waktuJadwal != "-") " • ${hasilWawancara.waktuJadwal}" else ""}",
+                            fontSize = 12.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Status Badge
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = statusColor.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        when (status) {
+                            InterviewStatus.ACCEPTED -> "Diterima"
+                            InterviewStatus.REJECTED -> "Ditolak"
+                            else -> "Pending"
+                        },
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            
+            // Tampilkan divisi jika diterima
+            if (status == InterviewStatus.ACCEPTED && !hasilWawancara.divisi.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Divisi: ${hasilWawancara.divisi}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF4CAF50),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            
+            // Tampilkan alasan jika ditolak
+            if (status == InterviewStatus.REJECTED && !hasilWawancara.alasan.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFD32F2F).copy(alpha = 0.1f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Alasan: ${hasilWawancara.alasan}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFD32F2F),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * Expandable card untuk menampilkan jadwal wawancara per hari
- * 
+ *
  * Card ini bisa di-expand untuk melihat daftar peserta yang akan diwawancara
- * 
+ *
  * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
  * - Menggunakan authState untuk mendapatkan token untuk API call
- * 
+ *
  * @param viewModel ViewModel untuk state management
  * @param dayIndex Index hari dalam jadwal
  * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
@@ -942,7 +1118,7 @@ fun ExpandableDayCard(
     val day = viewModel.days[dayIndex]
     var expanded by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -988,9 +1164,9 @@ fun ExpandableDayCard(
                             color = colorScheme.primary
                         )
                     }
-                    
+
                     Spacer(Modifier.width(12.dp))
-                    
+
                     Column {
                         Text(
                             "${day.dayName}, ${day.date}",
@@ -1015,7 +1191,7 @@ fun ExpandableDayCard(
                         }
                     }
                 }
-                
+
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
@@ -1055,17 +1231,17 @@ fun ExpandableDayCard(
 
 /**
  * Card untuk menampilkan informasi peserta dalam jadwal wawancara
- * 
+ *
  * Card ini menampilkan:
  * - Nama peserta
  * - Waktu wawancara
  * - Status hasil wawancara
  * - Tombol untuk Accept/Reject peserta
  * - Timer wawancara
- * 
+ *
  * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
  * - Integrasi dengan backend API saat Accept/Reject peserta
- * 
+ *
  * @param participant Data peserta
  * @param day Data hari jadwal
  * @param dayIndex Index hari
@@ -1104,7 +1280,7 @@ fun ParticipantCard(
     )
 
     val colorScheme = MaterialTheme.colorScheme
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1480,9 +1656,9 @@ fun EditScheduleDialog(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-                
+
                 Spacer(Modifier.height(16.dp))
-                
+
                 Text(
                     participant.name,
                     fontWeight = FontWeight.Bold,
@@ -1490,14 +1666,14 @@ fun EditScheduleDialog(
                     color = Color(0xFF1A1A40),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-                
+
                 Text(
                     "Edit jadwal wawancara",
                     fontSize = 13.sp,
                     color = Color(0xFF666666),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-                
+
                 Spacer(Modifier.height(24.dp))
 
                 // Tanggal
@@ -1560,9 +1736,9 @@ fun EditScheduleDialog(
                         DatePicker(state = pickerState)
                     }
                 }
-                
+
                 Spacer(Modifier.height(16.dp))
-                
+
                 // Waktu
                 Text(
                     "Waktu",
@@ -1600,9 +1776,9 @@ fun EditScheduleDialog(
                         }
                     }
                 )
-                
+
                 Spacer(Modifier.height(16.dp))
-                
+
                 // Tempat
                 Text(
                     "Tempat",
@@ -1727,7 +1903,7 @@ fun RejectDialog(
                     textAlign = TextAlign.Center,
                     lineHeight = 28.sp
                 )
-                
+
                 Text(
                     "Keputusan ini tidak dapat dibatalkan",
                     fontSize = 13.sp,
@@ -1749,12 +1925,12 @@ fun RejectDialog(
                 OutlinedTextField(
                     value = reason,
                     onValueChange = { reason = it },
-                    placeholder = { 
+                    placeholder = {
                         Text(
                             "Tuliskan alasan penolakan...",
                             fontSize = 14.sp,
                             color = Color(0xFFBDBDBD)
-                        ) 
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1782,7 +1958,7 @@ fun RejectDialog(
                             fontWeight = FontWeight.Medium
                         )
                     }
-                    
+
                     Button(
                         onClick = { if (reason.isNotBlank()) onConfirm(reason) },
                         modifier = Modifier.weight(1f),
@@ -1847,16 +2023,16 @@ fun AcceptDialog(
                         modifier = Modifier.size(36.dp)
                     )
                 }
-                
+
                 Spacer(Modifier.height(16.dp))
-                
+
                 Text(
                     "Pilih Divisi Penerimaan",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A40)
                 )
-                
+
                 Text(
                     "Peserta akan ditempatkan di divisi ini",
                     fontSize = 13.sp,
@@ -1875,16 +2051,16 @@ fun AcceptDialog(
                             .clickable { selectedDivision = division },
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (selectedDivision == division) 
-                                Color(0xFF4CAF50).copy(alpha = 0.1f) 
-                            else 
+                            containerColor = if (selectedDivision == division)
+                                Color(0xFF4CAF50).copy(alpha = 0.1f)
+                            else
                                 Color(0xFFF5F5F5)
                         ),
                         border = BorderStroke(
                             width = 2.dp,
-                            color = if (selectedDivision == division) 
-                                Color(0xFF4CAF50) 
-                            else 
+                            color = if (selectedDivision == division)
+                                Color(0xFF4CAF50)
+                            else
                                 Color.Transparent
                         )
                     ) {
@@ -1916,15 +2092,15 @@ fun AcceptDialog(
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
-                            
+
                             Spacer(Modifier.width(12.dp))
-                            
+
                             Text(
                                 division,
                                 fontSize = 16.sp,
-                                fontWeight = if (selectedDivision == division) 
-                                    FontWeight.Bold 
-                                else 
+                                fontWeight = if (selectedDivision == division)
+                                    FontWeight.Bold
+                                else
                                     FontWeight.Normal,
                                 color = if (selectedDivision == division)
                                     Color(0xFF1A1A40)
@@ -1932,7 +2108,7 @@ fun AcceptDialog(
                                     Color(0xFF666666),
                                 modifier = Modifier.weight(1f)
                             )
-                            
+
                             RadioButton(
                                 selected = selectedDivision == division,
                                 onClick = { selectedDivision = division },
@@ -1964,7 +2140,7 @@ fun AcceptDialog(
                             fontWeight = FontWeight.Medium
                         )
                     }
-                    
+
                     Button(
                         onClick = { if (selectedDivision.isNotBlank()) onConfirm(selectedDivision) },
                         modifier = Modifier.weight(1f),
@@ -2100,7 +2276,7 @@ fun AddPesertaToJadwalDialog(
                             )
                         }
                     } else {
-                        androidx.compose.foundation.lazy.LazyColumn(
+                        LazyColumn(
                             modifier = Modifier.weight(1f)
                         ) {
                             items(pesertaLulusTanpaJadwal) { peserta ->

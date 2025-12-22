@@ -10,6 +10,7 @@ import com.example.commitech.data.model.ImportExcelResponse
 import com.example.commitech.data.model.UpdateStatusSeleksiBerkasRequest
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.model.HasilWawancaraSingleResponse
+import com.example.commitech.data.model.HasilWawancaraListResponse
 import com.example.commitech.data.model.SessionValidationResponse
 import com.example.commitech.data.model.ActiveSessionsResponse
 import com.example.commitech.data.model.JadwalRekrutmenResponse
@@ -142,6 +143,15 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
+    
+    /**
+     * Get semua hasil wawancara
+     * Endpoint: GET /api/wawancara/hasil
+     */
+    @GET("api/wawancara/hasil")
+    suspend fun getHasilWawancara(
+        @Header("Authorization") token: String
+    ): Response<HasilWawancaraListResponse>
     
     // ==========================================
     // API Jadwal Rekrutmen

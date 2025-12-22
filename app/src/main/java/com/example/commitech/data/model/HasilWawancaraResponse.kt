@@ -62,3 +62,19 @@ data class HasilWawancaraResponse(
     val diubahPada: String?   // ISO 8601 format
 )
 
+/**
+ * Model untuk Response List hasil wawancara dari backend API
+ * 
+ * Endpoint: GET /api/wawancara/hasil
+ */
+data class HasilWawancaraListResponse(
+    @SerializedName("sukses")
+    val sukses: Boolean,
+    
+    @SerializedName("pesan")
+    val pesan: String?,
+    
+    @SerializedName("data")
+    val data: List<HasilWawancaraResponse>
+)
+
