@@ -275,7 +275,10 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val jadwalId = backStackEntry.arguments?.getInt("jadwalId") ?: return@composable
             val jadwal = jadwalViewModel.getJadwalById(jadwalId) ?: return@composable
-            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel()
+            val context = LocalContext.current
+            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel(
+                factory = SeleksiBerkasViewModelFactory(context)
+            )
             DetailJadwalWawancaraScreen(
                 navController = navController,
                 jadwal = jadwal,
