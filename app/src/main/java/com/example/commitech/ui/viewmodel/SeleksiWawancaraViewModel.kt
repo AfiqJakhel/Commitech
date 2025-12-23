@@ -729,7 +729,9 @@ class SeleksiWawancaraViewModel : ViewModel() {
             pesertaByDate.forEach { (formattedDate, participants) ->
                 // Parse tanggal untuk mendapatkan nama hari
                 val dayName = parseDayName(formattedDate)
-                val lokasi = "Sekretariat BEM KM FTI" // Default lokasi
+                val lokasi = jadwalList.firstOrNull {
+                    parseDateForSorting(formatDate(it.tanggalMulai)) == parseDateForSorting(formattedDate)
+                }?.lokasi?.ifBlank { "Tidak ditentukan" } ?: "Tidak ditentukan"
                 
                 // Cari day yang sudah ada dengan tanggal yang sama
                 val existingDayIndex = _days.indexOfFirst { 

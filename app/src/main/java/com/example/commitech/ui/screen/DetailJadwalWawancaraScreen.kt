@@ -483,6 +483,8 @@ fun DetailJadwalWawancaraScreen(
     val saveHasilError by detailViewModel.saveHasilError.collectAsState()
     val saveHasilSuccess by detailViewModel.saveHasilSuccess.collectAsState()
 
+    var pesertaToDelete by remember { mutableStateOf<Peserta?>(null) }
+
     // Initialize peserta states - trigger ketika pesertaTerpilih berubah
     // Pastikan initialize dilakukan untuk semua peserta baru
     LaunchedEffect(pesertaTerpilih.size, pesertaPerJadwalUpdateTrigger) {
@@ -661,6 +663,13 @@ fun DetailJadwalWawancaraScreen(
                                 fontWeight = FontWeight.Medium
                             )
                         }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "Lokasi: ${jadwal.lokasi.ifBlank { "-" }}",
+                            fontSize = 13.sp,
+                            color = colorScheme.onBackground.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Normal
+                        )
                     }
                 },
                 navigationIcon = {
@@ -782,11 +791,53 @@ fun DetailJadwalWawancaraScreen(
                             // Set peserta untuk dihapus setelah sukses menyimpan
                             pesertaToRemove = peserta
                         },
-                        onHapus = null // Tidak ada tombol hapus
+                        onHapus = {
+                            pesertaToDelete = peserta
+                        }
                     )
                 }
             }
         }
+    }
+
+    pesertaToDelete?.let { peserta ->
+        AlertDialog(
+            onDismissRequest = { pesertaToDelete = null },
+            title = {
+                Text(
+                    text = "Hapus Peserta",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Yakin ingin menghapus ${peserta.nama} dari jadwal ini?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        authToken?.let { token ->
+                            jadwalViewModel.setAuthToken(token)
+                        }
+                        jadwalViewModel.hapusPesertaDariJadwal(jadwal.id, peserta)
+                        pesertaToDelete = null
+                    }
+                ) {
+                    Text(
+                        text = "Hapus",
+                        color = Color(0xFFD32F2F),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pesertaToDelete = null }) {
+                    Text("Batal")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
     
     // Dialog untuk memilih peserta
@@ -996,6 +1047,25 @@ fun PesertaCardWawancara(
 
                             // Status badge wawancara dihapus - hanya tampilkan di banner bawah
                         }
+                    }
+                }
+
+                if (onHapus != null) {
+                    IconButton(
+                        onClick = onHapus,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                Color(0xFFD32F2F).copy(alpha = 0.1f),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Hapus Peserta",
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
