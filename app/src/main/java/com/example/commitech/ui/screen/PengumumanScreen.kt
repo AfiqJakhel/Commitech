@@ -169,7 +169,8 @@ fun PengumumanScreen(
             // Header Card dengan gradient yang lebih menarik
             Card(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .shadow(12.dp, RoundedCornerShape(24.dp)),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.Transparent

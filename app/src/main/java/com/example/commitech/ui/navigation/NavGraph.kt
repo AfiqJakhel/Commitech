@@ -3,6 +3,7 @@ package com.example.commitech.ui.navigation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
@@ -275,7 +276,10 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val jadwalId = backStackEntry.arguments?.getInt("jadwalId") ?: return@composable
             val jadwal = jadwalViewModel.getJadwalById(jadwalId) ?: return@composable
-            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel()
+            val context = LocalContext.current
+            val seleksiBerkasViewModel: SeleksiBerkasViewModel = viewModel(
+                factory = SeleksiBerkasViewModelFactory(context)
+            )
             DetailJadwalWawancaraScreen(
                 navController = navController,
                 jadwal = jadwal,
