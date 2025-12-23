@@ -749,6 +749,13 @@ fun JadwalRekrutmenCard(
                     }
                     Spacer(Modifier.height(4.dp))
                     Text(
+                        text = "Lokasi: ${jadwal.lokasi.ifBlank { "-" }}",
+                        fontSize = 13.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
                         text = "${jadwal.tanggalMulai} - ${jadwal.tanggalSelesai}",
                         fontSize = 13.sp,
                         color = colorScheme.onSurface.copy(alpha = 0.7f),

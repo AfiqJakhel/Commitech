@@ -43,6 +43,7 @@ fun UbahJadwalScreen(
     
     var judul by remember { mutableStateOf(jadwal.judul) }
     var pewawancara by remember { mutableStateOf(jadwal.pewawancara) }
+    var lokasi by remember { mutableStateOf(jadwal.lokasi) }
     var tglMulai by remember { mutableStateOf(jadwal.tanggalMulai) }
     var tglSelesai by remember { mutableStateOf(jadwal.tanggalSelesai) }
     var wktMulai by remember { mutableStateOf(jadwal.waktuMulai) }
@@ -154,6 +155,21 @@ fun UbahJadwalScreen(
                         onValueChange = { pewawancara = it },
                         label = { Text("Nama Pewawancara") },
                         placeholder = { Text("Masukkan nama pewawancara...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = lokasi,
+                        onValueChange = { lokasi = it },
+                        label = { Text("Lokasi Wawancara") },
+                        placeholder = { Text("Masukkan lokasi wawancara...") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -296,7 +312,8 @@ fun UbahJadwalScreen(
                             tglSelesai,
                             wktMulai.ifBlank { "-" },
                             wktSelesai.ifBlank { "-" },
-                            pewawancara
+                            pewawancara,
+                            lokasi
                         )
                         
                         // Cek apakah jadwal untuk hari ini atau besok
