@@ -96,7 +96,7 @@ fun AppNavGraph(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val navController = rememberNavController()
-    
+
     // Shared ViewModels untuk sinkronisasi data
     val authViewModel: AuthViewModel = viewModel()
     val dataPendaftarViewModel: DataPendaftarViewModel = viewModel()
