@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.animation.core)
     implementation(libs.ui.graphics)
+    implementation(libs.androidx.ui.geometry)
 
     // ✅ LocalDate support di API < 26
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")

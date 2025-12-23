@@ -3,6 +3,8 @@ package com.example.commitech.ui.screen
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
@@ -32,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -40,11 +44,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.commitech.ui.theme.LocalTheme
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModelFactory
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun SeleksiBerkasScreen(
     authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
@@ -69,6 +75,7 @@ fun SeleksiBerkasScreen(
     val isLoading = state.isLoading
     val error = state.error
     val isDark = isSystemInDarkTheme()
+    val themeCard = LocalTheme.current
     
     // Tampilkan error jika ada
     LaunchedEffect(error) {
@@ -101,12 +108,6 @@ fun SeleksiBerkasScreen(
                             text = "Seleksi Berkas",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            color = subTitleColor
-                        )
-                        Text(
-                            text = "${state.totalItems} Peserta",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
                             color = subTitleColor
                         )
                     }
@@ -189,6 +190,16 @@ fun SeleksiBerkasScreen(
                         .padding(horizontal = 20.dp),
                     contentPadding = PaddingValues(bottom = 180.dp)
                 ) {
+                    stickyHeader {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(backgroundColor) // ✅ background penutup full
+                                .padding(top = 8.dp, bottom = 8.dp)
+                        ) {
+                            JumlahPesertaCard(total = state.totalItems)
+                        }
+                    }
                     itemsIndexed(pesertaList) { index, peserta ->
                         val actualIndex = ((state.currentPage - 1) * 20) + index + 1
                         PesertaCard(
@@ -200,11 +211,11 @@ fun SeleksiBerkasScreen(
                             authToken = authState.token
                         )
                     }
-                    
+
                     // Pagination Info & Controls
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         // Pagination Info Card
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -223,9 +234,9 @@ fun SeleksiBerkasScreen(
                                     fontWeight = FontWeight.Medium,
                                     color = textColor
                                 )
-                                
+
                                 Spacer(modifier = Modifier.height(4.dp))
-                                
+
                                 val startItem = if (pesertaList.isNotEmpty()) {
                                     ((state.currentPage - 1) * 20) + 1
                                 } else {
@@ -236,7 +247,7 @@ fun SeleksiBerkasScreen(
                                 } else {
                                     0
                                 }
-                                
+
                                 if (startItem > 0 && endItem > 0) {
                                     Text(
                                         text = "Menampilkan $startItem-$endItem dari ${state.totalItems}",
@@ -245,9 +256,9 @@ fun SeleksiBerkasScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
-                                
+
                                 Spacer(modifier = Modifier.height(12.dp))
-                                
+
                                 // Pagination Buttons
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -276,9 +287,9 @@ fun SeleksiBerkasScreen(
                                             color = Color.White
                                         )
                                     }
-                                    
+
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    
+
                                     // Next Button
                                     Button(
                                         onClick = {
@@ -302,7 +313,7 @@ fun SeleksiBerkasScreen(
                                 }
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
@@ -467,6 +478,52 @@ fun SeleksiBerkasScreen(
 }
 
 @Composable
+fun JumlahPesertaCard(
+    total: Int,
+) {
+    val themeCard = LocalTheme.current
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F7FA))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            themeCard.SeleksiBerkas,
+                            Color.White.copy(alpha = 0.5f)
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(1050f, 0f)
+                    )
+                )
+                .padding(20.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "$total",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A40)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Peserta",
+                    fontSize = 28.sp,
+                    color = Color(0xFF1A1A40)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PesertaCard(
     index: Int,
     peserta: Peserta,
@@ -480,13 +537,13 @@ fun PesertaCard(
     var showRejectDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    
+
     // Collect peserta list untuk mendapatkan update terbaru
     val pesertaList by viewModel.pesertaList.collectAsState()
-    val pesertaTerbaru = remember(pesertaList) { 
-        pesertaList.find { it.nama == peserta.nama } ?: peserta 
+    val pesertaTerbaru = remember(pesertaList) {
+        pesertaList.find { it.nama == peserta.nama } ?: peserta
     }
-    
+
     // Gunakan status dari peserta terbaru
     val status = if (pesertaTerbaru.lulusBerkas) true else if (pesertaTerbaru.ditolak) false else null
 
@@ -506,8 +563,7 @@ fun PesertaCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .shadow(animatedShadow, RoundedCornerShape(16.dp)),
+            .padding(vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
         border = BorderStroke(2.dp, animatedBorderColor)
@@ -537,7 +593,7 @@ fun PesertaCard(
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
-                    
+
                     // NIM di sebelah nama
                     if (!pesertaTerbaru.nim.isNullOrBlank()) {
                         Text(
@@ -548,10 +604,10 @@ fun PesertaCard(
                         )
                     }
                 }
-                
+
                 // Menu 3 titik di kanan atas
                 var showMenu by remember { mutableStateOf(false) }
-                
+
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
@@ -563,7 +619,7 @@ fun PesertaCard(
                             tint = textColor.copy(alpha = 0.7f)
                         )
                     }
-                    
+
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
@@ -601,9 +657,9 @@ fun PesertaCard(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Footer: Button Terima dan Tolak di tengah (hanya jika belum direview)
             if (status == null) {
                 Row(
@@ -632,7 +688,7 @@ fun PesertaCard(
                         Spacer(Modifier.width(6.dp))
                         Text("Terima", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
-                    
+
                     // Tombol Tolak
                     Button(
                         onClick = { showRejectDialog = true },
@@ -746,12 +802,12 @@ fun InfoDialog(
     val context = androidx.compose.ui.platform.LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val isDark = isSystemInDarkTheme()
-    
+
     val backgroundColor = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
     val subTitleColor = if (isDark) Color(0xFFBDBDBD) else Color(0xFF666666)
     val cardColor = if (isDark) Color(0xFF2C2C2C) else Color(0xFFF5F5F5)
-    
+
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
@@ -1145,7 +1201,7 @@ fun AcceptDialog(
                         onValueChange = { reason = it },
                         placeholder = {
                             Text(
-                                "Tuliskan alasan anda menerima peserta ini...",
+                                "Tuliskan alasan anda menerima peserta ini...(opsional)",
                                 fontSize = 13.sp,
                                 color = Color.Gray
                             )
@@ -1164,7 +1220,7 @@ fun AcceptDialog(
 
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
-                        onClick = { if (reason.isNotBlank()) onConfirm(reason) },
+                        onClick = { onConfirm(reason) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
@@ -1358,8 +1414,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = nama,
                         onValueChange = { nama = it },
-                        label = { 
-                            Text("Nama", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("Nama", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -1375,8 +1431,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = nim,
                         onValueChange = { nim = it },
-                        label = { 
-                            Text("NIM", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("NIM", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -1400,8 +1456,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = divisi1,
                         onValueChange = { divisi1 = it },
-                        label = { 
-                            Text("Pilihan Divisi 1", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("Pilihan Divisi 1", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -1417,8 +1473,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = alasan1,
                         onValueChange = { alasan1 = it },
-                        label = { 
-                            Text("Alasan Divisi 1", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("Alasan Divisi 1", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
@@ -1436,8 +1492,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = divisi2,
                         onValueChange = { divisi2 = it },
-                        label = { 
-                            Text("Pilihan Divisi 2", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("Pilihan Divisi 2", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -1453,8 +1509,8 @@ fun EditPesertaDialog(
                     OutlinedTextField(
                         value = alasan2,
                         onValueChange = { alasan2 = it },
-                        label = { 
-                            Text("Alasan Divisi 2", fontSize = 14.sp, fontWeight = FontWeight.Medium) 
+                        label = {
+                            Text("Alasan Divisi 2", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
@@ -1564,27 +1620,27 @@ fun DeletePesertaDialog(
                         modifier = Modifier.size(40.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(20.dp))
-                
+
                 Text(
                     text = "Hapus Data?",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 Text(
                     text = "Apakah Anda yakin ingin menghapus data pendaftar",
                     fontSize = 14.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
                     text = "\"$pesertaName\"?",
                     fontSize = 15.sp,
@@ -1594,9 +1650,9 @@ fun DeletePesertaDialog(
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1614,7 +1670,7 @@ fun DeletePesertaDialog(
                     ) {
                         Text("Batal", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    
+
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier
