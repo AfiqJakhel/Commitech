@@ -38,6 +38,7 @@ fun TambahJadwalScreen(
     val context = LocalContext.current
     var judul by remember { mutableStateOf("") }
     var pewawancara by remember { mutableStateOf("") }
+    var lokasi by remember { mutableStateOf("") }
     var tglMulai by remember { mutableStateOf("") }
     var tglSelesai by remember { mutableStateOf("") }
     var wktMulai by remember { mutableStateOf("") }
@@ -132,6 +133,21 @@ fun TambahJadwalScreen(
                         onValueChange = { pewawancara = it },
                         label = { Text("Nama Pewawancara") },
                         placeholder = { Text("Masukkan nama pewawancara...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            focusedLabelColor = colorScheme.primary
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = lokasi,
+                        onValueChange = { lokasi = it },
+                        label = { Text("Lokasi Wawancara") },
+                        placeholder = { Text("Masukkan lokasi wawancara...") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -274,7 +290,8 @@ fun TambahJadwalScreen(
                             tglSelesai,
                             wktMulai.ifBlank { "-" },
                             wktSelesai.ifBlank { "-" },
-                            pewawancara
+                            pewawancara,
+                            lokasi
                         )
                         
                         // Cek apakah jadwal untuk hari ini atau besok

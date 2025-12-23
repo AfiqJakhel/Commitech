@@ -16,7 +16,9 @@ data class JadwalRekrutmenItem(
     @SerializedName("waktu_selesai")
     val waktuSelesai: String,
     @SerializedName("pewawancara")
-    val pewawancara: String?
+    val pewawancara: String?,
+    @SerializedName("lokasi")
+    val lokasi: String?
 )
 
 data class JadwalRekrutmenResponse(

@@ -27,7 +27,8 @@ data class Jadwal(
     val tanggalSelesai: String,
     val waktuMulai: String,
     val waktuSelesai: String,
-    val pewawancara: String
+    val pewawancara: String,
+    val lokasi: String
 )
 
 class JadwalViewModel : ViewModel() {
@@ -103,6 +104,29 @@ class JadwalViewModel : ViewModel() {
             removePesertaFromJadwal(jadwalId, peserta.id)
         } else {
             Log.w("JadwalViewModel", "Tidak bisa hapus peserta dari database: authToken=${authToken.isNotBlank()}, pesertaId=${peserta?.id}")
+        }
+    }
+
+    fun hapusPesertaDariJadwal(jadwalId: Int, peserta: Peserta) {
+        val pesertaId = peserta.id
+
+        if (pesertaId != null) {
+            _pesertaPerJadwal[jadwalId]?.removeAll { it.id == pesertaId }
+        } else {
+            _pesertaPerJadwal[jadwalId]?.removeAll { it.nama == peserta.nama }
+        }
+
+        // Trigger recomposition setelah menghapus
+        _pesertaPerJadwalUpdateTrigger.value++
+
+        // Hapus dari database juga jika ada ID
+        if (authToken.isNotBlank() && pesertaId != null) {
+            removePesertaFromJadwal(jadwalId, pesertaId)
+        } else {
+            Log.w(
+                "JadwalViewModel",
+                "Tidak bisa hapus peserta dari database: authToken=${authToken.isNotBlank()}, pesertaId=$pesertaId"
+            )
         }
     }
     
@@ -357,7 +381,8 @@ class JadwalViewModel : ViewModel() {
             tanggalSelesai = item.tanggalSelesai,
             waktuMulai = item.waktuMulai,
             waktuSelesai = item.waktuSelesai,
-            pewawancara = item.pewawancara ?: "-"
+            pewawancara = item.pewawancara ?: "-",
+            lokasi = item.lokasi ?: ""
         )
     }
 
@@ -394,7 +419,8 @@ class JadwalViewModel : ViewModel() {
         tglSelesai: String,
         jamMulai: String,
         jamSelesai: String,
-        pewawancara: String
+        pewawancara: String,
+        lokasi: String
     ) {
         val newItem = Jadwal(
             id = (_daftarJadwal.maxOfOrNull { it.id } ?: 0) + 1,
@@ -403,7 +429,8 @@ class JadwalViewModel : ViewModel() {
             tanggalSelesai = tglSelesai,
             waktuMulai = jamMulai.trim(),
             waktuSelesai = jamSelesai.trim(),
-            pewawancara = pewawancara.trim().ifBlank { "-" }
+            pewawancara = pewawancara.trim().ifBlank { "-" },
+            lokasi = lokasi.trim()
         )
         _daftarJadwal.add(newItem)
 
@@ -421,7 +448,8 @@ class JadwalViewModel : ViewModel() {
                     tanggalSelesai = newItem.tanggalSelesai,
                     waktuMulai = newItem.waktuMulai,
                     waktuSelesai = newItem.waktuSelesai,
-                    pewawancara = newItem.pewawancara
+                    pewawancara = newItem.pewawancara,
+                    lokasi = newItem.lokasi
                 )
                 
                 Log.d("JadwalViewModel", "Mengirim jadwal ke database: $requestItem")
@@ -456,7 +484,8 @@ class JadwalViewModel : ViewModel() {
         tglSelesai: String,
         jamMulai: String,
         jamSelesai: String,
-        pewawancara: String
+        pewawancara: String,
+        lokasi: String
     ) {
         val index = _daftarJadwal.indexOfFirst { it.id == id }
         if (index != -1) {
@@ -466,7 +495,8 @@ class JadwalViewModel : ViewModel() {
                 tanggalSelesai = tglSelesai,
                 waktuMulai = jamMulai.trim(),
                 waktuSelesai = jamSelesai.trim(),
-                pewawancara = pewawancara.trim().ifBlank { "-" }
+                pewawancara = pewawancara.trim().ifBlank { "-" },
+                lokasi = lokasi.trim()
             )
             _daftarJadwal[index] = updated
 
@@ -484,7 +514,8 @@ class JadwalViewModel : ViewModel() {
                         tanggalSelesai = updated.tanggalSelesai,
                         waktuMulai = updated.waktuMulai,
                         waktuSelesai = updated.waktuSelesai,
-                        pewawancara = updated.pewawancara
+                        pewawancara = updated.pewawancara,
+                        lokasi = updated.lokasi
                     )
                     
                     Log.d("JadwalViewModel", "Mengupdate jadwal ID $id ke database")

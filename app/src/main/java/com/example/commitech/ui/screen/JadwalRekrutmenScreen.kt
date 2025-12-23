@@ -320,6 +320,13 @@ fun JadwalRekrutmenScreen(
                                     color = colorScheme.onSurface.copy(alpha = 0.8f),
                                     fontWeight = FontWeight.Medium
                                 )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "Lokasi: ${jadwal.lokasi.ifBlank { "-" }}",
+                                    fontSize = 13.sp,
+                                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Medium
+                                )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     text = "${jadwal.tanggalMulai} - ${jadwal.tanggalSelesai}",

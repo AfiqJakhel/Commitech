@@ -39,8 +39,8 @@ fun PendaftarResponse.toPendaftar(): Pendaftar {
         divisi2 = pilihanDivisi2 ?: "",
         alasan2 = alasan2 ?: "",
         krsTerakhir = krsTerakhir, // PERBAIKAN: Tambah link KRS
-        formulirPendaftaran = if (formulirPendaftaran == true) "Sudah" else null, // Convert Boolean to String
-        suratKomitmen = if (suratKomitmen == true) "Sudah" else null // Convert Boolean to String
+        formulirPendaftaran = formulirPendaftaran?.takeIf { it.isNotBlank() }, // Simpan link formulir jika ada
+        suratKomitmen = suratKomitmen?.takeIf { it.isNotBlank() } // Simpan link surat komitmen jika ada
     )
 }
 
@@ -60,9 +60,9 @@ fun Pendaftar.toPendaftarResponse(): PendaftarResponse {
         alasan1 = alasan1.takeIf { it.isNotEmpty() },
         alasan2 = alasan2.takeIf { it.isNotEmpty() },
         alasan3 = null,
-        krsTerakhir = null,
-        formulirPendaftaran = null,
-        suratKomitmen = null,
+        krsTerakhir = krsTerakhir,
+        formulirPendaftaran = formulirPendaftaran,
+        suratKomitmen = suratKomitmen,
         pindahDivisi = null,
         tanggalJadwal = null,
         waktuJadwal = null,
@@ -118,14 +118,14 @@ class DataPendaftarViewModel : ViewModel() {
             var lastError: String? = null
             val maxRetries = 3 // Coba maksimal 3 kali
             
-            // Note: Search functionality akan dihandle di backend nanti
-            // Untuk sekarang kita load semua data
+            val searchQueryParam = search?.takeIf { it.isNotBlank() }
+                ?: _state.value.searchQuery.takeIf { it.isNotEmpty() }
             
             repeat(maxRetries) { attempt ->
                 if (success) return@repeat
                 
                 try {
-                    val response = repository.getPesertaList(token, page, 20)
+                    val response = repository.getPesertaList(token, page, 20, searchQueryParam)
                     
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
@@ -152,7 +152,8 @@ class DataPendaftarViewModel : ViewModel() {
                             currentPage = currentPage,
                             totalPages = totalPages,
                             totalItems = totalItems,
-                            hasMore = hasMore
+                            hasMore = hasMore,
+                            searchQuery = searchQueryParam ?: ""
                         )
                         success = true
                         return@repeat // Success, exit retry loop
@@ -213,7 +214,8 @@ class DataPendaftarViewModel : ViewModel() {
     fun loadNextPage(token: String?) {
         val currentState = _state.value
         if (currentState.hasMore && !currentState.isLoadingMore && !currentState.isLoading) {
-            loadPendaftarList(token, currentState.currentPage + 1, append = true)
+            val activeSearch = currentState.searchQuery.takeIf { it.isNotEmpty() }
+            loadPendaftarList(token, currentState.currentPage + 1, append = true, search = activeSearch)
         }
     }
 
@@ -322,7 +324,12 @@ class DataPendaftarViewModel : ViewModel() {
                 if (success) return@repeat
                 
                 try {
-                    val response = repository.getPesertaList(token, 1, 20)
+                    val response = repository.getPesertaList(
+                        token,
+                        1,
+                        20,
+                        _state.value.searchQuery.takeIf { it.isNotEmpty() }
+                    )
                     if (response.isSuccessful && response.body() != null) {
                         val body = response.body()!!
                         val pendaftarResponses = body.data
@@ -365,11 +372,12 @@ class DataPendaftarViewModel : ViewModel() {
      * FITUR BARU: Search pendaftar berdasarkan nama/NIM
      */
     fun searchPendaftar(token: String?, query: String) {
+        val normalizedQuery = query.trim()
         // Update search query di state
-        _state.value = _state.value.copy(searchQuery = query)
+        _state.value = _state.value.copy(searchQuery = normalizedQuery)
         
         // Reload list dengan search query (reset ke page 1)
-        loadPendaftarList(token, page = 1, append = false, search = query.takeIf { it.isNotEmpty() })
+        loadPendaftarList(token, page = 1, append = false, search = normalizedQuery.takeIf { it.isNotEmpty() })
     }
     
     /**
