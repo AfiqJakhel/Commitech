@@ -3,6 +3,9 @@ package com.example.commitech.ui.navigation
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
@@ -93,7 +96,7 @@ fun AppNavGraph(
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val navController = rememberNavController()
-    
+
     // Shared ViewModels untuk sinkronisasi data
     val authViewModel: AuthViewModel = viewModel()
     val dataPendaftarViewModel: DataPendaftarViewModel = viewModel()
@@ -315,12 +318,13 @@ fun AppNavGraph(
             popExitTransition = { powerPointPushPopExit() }
         ) { backStackEntry ->
             val namaPeserta = backStackEntry.arguments?.getString("namaPeserta") ?: ""
+            val authState by authViewModel.authState.collectAsState()
             UbahDetailScreen(
                 navController = navController,
                 namaPeserta = namaPeserta,
                 viewModel = pengumumanViewModel,
                 seleksiViewModel = seleksiWawancaraViewModel,
-                token = authViewModel.authState.value.token
+                token = authState.token
             )
         }
 
