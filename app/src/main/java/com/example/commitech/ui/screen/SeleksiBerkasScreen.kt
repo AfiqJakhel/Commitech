@@ -3,6 +3,8 @@ package com.example.commitech.ui.screen
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
@@ -32,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -40,11 +44,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.commitech.ui.theme.LocalTheme
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModelFactory
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @Composable
 fun SeleksiBerkasScreen(
     authViewModel: com.example.commitech.ui.viewmodel.AuthViewModel,
@@ -69,6 +75,7 @@ fun SeleksiBerkasScreen(
     val isLoading = state.isLoading
     val error = state.error
     val isDark = isSystemInDarkTheme()
+    val themeCard = LocalTheme.current
     
     // Tampilkan error jika ada
     LaunchedEffect(error) {
@@ -101,12 +108,6 @@ fun SeleksiBerkasScreen(
                             text = "Seleksi Berkas",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            color = subTitleColor
-                        )
-                        Text(
-                            text = "${state.totalItems} Peserta",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
                             color = subTitleColor
                         )
                     }
@@ -183,6 +184,45 @@ fun SeleksiBerkasScreen(
                     )
                 }
             } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(
+                                        themeCard.SeleksiBerkas,
+                                        Color.White.copy(alpha = 0.5f)
+                                    ),
+                                    start = Offset(0f, 0f),
+                                    end = Offset(1050f, 0f)
+                                )
+                            )
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = state.totalItems.toString(),
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A1A40)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Peserta",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color(0xFF1A1A40)
+                            )
+                        }
+                    }
+                }
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
