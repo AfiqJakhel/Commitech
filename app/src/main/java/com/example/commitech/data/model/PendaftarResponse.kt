@@ -65,11 +65,9 @@ data class PendaftarResponse(
     @SerializedName("krs_terakhir")
     val krsTerakhir: String?,
     @SerializedName("formulir_pendaftaran")
-    @JsonAdapter(BooleanFromIntDeserializer::class)
-    val formulirPendaftaran: Boolean?,
+    val formulirPendaftaran: String?,
     @SerializedName("surat_komitmen")
-    @JsonAdapter(BooleanFromIntDeserializer::class)
-    val suratKomitmen: Boolean?,
+    val suratKomitmen: String?,
     @SerializedName("pindah_divisi")
     @JsonAdapter(BooleanFromIntDeserializer::class)
     val pindahDivisi: Boolean?,
