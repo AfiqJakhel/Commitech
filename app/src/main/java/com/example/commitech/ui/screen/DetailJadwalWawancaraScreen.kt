@@ -1,5 +1,9 @@
 package com.example.commitech.ui.screen
 
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
@@ -31,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -44,6 +49,7 @@ import com.example.commitech.ui.viewmodel.*
 import com.example.commitech.ui.viewmodel.DetailJadwalWawancaraViewModel
 import com.example.commitech.ui.viewmodel.PesertaWawancaraState
 import com.example.commitech.data.model.HasilWawancaraResponse
+import com.example.commitech.notification.InterviewNotificationHelper
 
 // Dialog functions - defined before use
 @Composable
@@ -793,7 +799,8 @@ fun DetailJadwalWawancaraScreen(
                         },
                         onHapus = {
                             pesertaToDelete = peserta
-                        }
+                        },
+                        snackbarHostState = snackbarHostState
                     )
                 }
             }
@@ -883,15 +890,22 @@ fun PesertaCardWawancara(
     jadwalId: Int,
     seleksiWawancaraViewModel: SeleksiWawancaraViewModel? = null,
     onTerimaTolak: () -> Unit = {},
-    onHapus: (() -> Unit)? = null
+    onHapus: (() -> Unit)? = null,
+    snackbarHostState: SnackbarHostState? = null
 ) {
     var showTimeDialog by remember { mutableStateOf(false) }
     var showDivisionDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // Local state untuk timer (simple, tanpa backend)
     var isTimerRunning by remember(peserta.id, peserta.nama) { mutableStateOf(false) }
     var remainingSeconds by remember(peserta.id, peserta.nama) { mutableIntStateOf(0) }
     var timerDuration by remember(peserta.id, peserta.nama) { mutableIntStateOf(0) }
+    
+    // State untuk notifikasi 5 menit - menggunakan peserta.id dan peserta.nama sebagai key
+    // agar state ter-reset ketika peserta berbeda
+    var hasWarned5Minutes by remember(peserta.id, peserta.nama) { mutableStateOf(false) }
 
     // Initialize peserta state jika belum ada
     LaunchedEffect(peserta.id, peserta.nama) {
@@ -964,6 +978,51 @@ fun PesertaCardWawancara(
 
         if (currentSeconds <= 0) {
             isTimerRunning = false
+        }
+    }
+    
+    LaunchedEffect(remainingSeconds, isTimerRunning, hasWarned5Minutes) {
+        val fiveMinutesInSeconds = 5 * 60
+        val fiveMinutes = 5
+        
+        if (isTimerRunning && 
+            remainingSeconds <= fiveMinutesInSeconds && 
+            remainingSeconds > 0 &&
+            !hasWarned5Minutes &&
+            timerDuration > fiveMinutes
+        ) {
+            hasWarned5Minutes = true
+            
+            val minutesLeft = remainingSeconds / 60
+            val secondsLeft = remainingSeconds % 60
+            val timeLeftText = if (minutesLeft > 0) {
+                "$minutesLeft menit $secondsLeft detik"
+            } else {
+                "$secondsLeft detik"
+            }
+            
+            triggerWarningVibration(context)
+            
+            InterviewNotificationHelper.showWarningNotification(
+                context = context,
+                participantName = peserta.nama,
+                scheduleLabel = "Sisa waktu $timeLeftText"
+            )
+            
+            snackbarHostState?.let { hostState ->
+                scope.launch {
+                    hostState.showSnackbar(
+                        message = "⚠️ Wawancara ${peserta.nama} tersisa $timeLeftText lagi!",
+                        duration = SnackbarDuration.Long
+                    )
+                }
+            }
+        }
+    }
+    
+    LaunchedEffect(timerDuration) {
+        if (timerDuration > 0) {
+            hasWarned5Minutes = false
         }
     }
 
@@ -1354,5 +1413,37 @@ fun PesertaCardWawancara(
                 )
             }
         }
+    }
+}
+
+/**
+ * Trigger vibration untuk warning 5 menit tersisa
+ * Menggunakan pattern vibration untuk memberikan feedback yang jelas
+ */
+private fun triggerWarningVibration(context: android.content.Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val manager = context.getSystemService(VibratorManager::class.java)
+        manager?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Vibrator::class.java)
+    }
+
+    vibrator ?: return
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // Pattern: jeda, getar, jeda, getar (memberikan 2x getar untuk peringatan)
+        val pattern = longArrayOf(0, 400, 120, 400)
+        val amplitudes = intArrayOf(
+            0,
+            VibrationEffect.DEFAULT_AMPLITUDE,
+            0,
+            VibrationEffect.DEFAULT_AMPLITUDE
+        )
+        val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
+        vibrator.vibrate(effect)
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(600L)
     }
 }

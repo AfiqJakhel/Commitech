@@ -1,10 +1,5 @@
 package com.example.commitech.ui.screen
 
-import android.content.Context
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -90,12 +85,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.commitech.notification.InterviewAlarmScheduler
 import com.example.commitech.notification.InterviewNotificationHelper
 import com.example.commitech.ui.components.CircleIconButton
 import com.example.commitech.ui.viewmodel.AuthViewModel
 import com.example.commitech.ui.viewmodel.DayData
-import com.example.commitech.ui.viewmodel.InterviewEvent
 import com.example.commitech.ui.viewmodel.InterviewStatus
 import com.example.commitech.ui.viewmodel.ParticipantData
 import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
@@ -120,20 +113,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
-/**
- * Screen untuk Seleksi Wawancara
- *
- * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
- *
- * Screen ini menampilkan:
- * - Jadwal wawancara per hari
- * - Status hasil wawancara
- * - Fitur untuk Accept/Reject peserta dengan integrasi backend API
- *
- * @param viewModel ViewModel untuk mengelola state dan logika seleksi wawancara
- * @param authViewModel ViewModel untuk autentikasi (diperlukan untuk token API)
- * @param onBackClick Callback saat tombol back ditekan
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeleksiWawancaraScreen(
@@ -153,80 +132,32 @@ fun SeleksiWawancaraScreen(
     val pesertaLulusCount by viewModel.pesertaLulusCount.collectAsState()
     val isLoadingPesertaLulusCount by viewModel.isLoadingPesertaLulusCount.collectAsState()
 
-    // Collect auth state untuk token
     val authState by authViewModel.authState.collectAsState()
-
-    // Collect state untuk hasil wawancara API call
     val isSavingHasil by viewModel.isSavingHasil.collectAsState()
     val saveHasilError by viewModel.saveHasilError.collectAsState()
     val saveHasilSuccess by viewModel.saveHasilSuccess.collectAsState()
-
-    // Collect state untuk loading jadwal dari database
     val isLoadingJadwal by viewModel.isLoadingJadwal.collectAsState()
     val jadwalError by viewModel.jadwalError.collectAsState()
 
-    // Snackbar host state untuk success message
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ============================================================================
-    // CRITICAL FIX #1: Load Jadwal Wawancara dari Database
-    // ============================================================================
-    // 
-    // MASALAH SEBELUMNYA:
-    // - Ada 2 LaunchedEffect yang redundant (Unit dan authState.token)
-    // - Check isEmpty() mencegah reload data saat kembali ke screen
-    // - Race condition antara 2 effect menyebabkan data tidak muncul
-    // - User harus tap berulang kali baru data muncul
-    //
-    // SOLUSI:
-    // - Hapus LaunchedEffect(Unit) yang redundant
-    // - Hapus check isEmpty() agar data selalu fresh
-    // - Pakai authState.token sebagai key untuk trigger reload
-    // - Saat token berubah (login/logout), data otomatis reload
-    //
-    // KENAPA PAKAI authState.token SEBAGAI KEY?
-    // - Token berubah saat login → trigger load data
-    // - Token null saat logout → tidak load data (karena let block tidak execute)
-    // - Saat kembali ke screen, token masih sama → tidak reload (tapi data sudah ada)
-    // - Ini lebih efisien daripada reload setiap kali screen dibuka
-    //
-    // KENAPA HAPUS isEmpty() CHECK?
-    // - Check isEmpty() membuat data tidak reload saat ada perubahan di backend
-    // - Jika admin lain ubah jadwal, user tidak akan lihat update
-    // - Lebih baik reload setiap kali token berubah untuk data yang fresh
-    // ============================================================================
-
-    // Load data saat screen dibuka (bukan hanya saat token berubah)
     LaunchedEffect(Unit) {
-        // Ensure notification channels dibuat (untuk local notifications)
         InterviewNotificationHelper.ensureChannels(context)
     }
     
-    // Load data sekali saat pertama kali masuk atau saat token berubah
     LaunchedEffect(authState.token) {
         authState.token?.let { token ->
-            // Load semua data sekaligus dalam parallel
             kotlinx.coroutines.coroutineScope {
-                // Load hasil wawancara terlebih dahulu (untuk status)
+                launch { viewModel.loadHasilWawancaraAndUpdateStatus(token) }
                 launch {
-                    viewModel.loadHasilWawancaraAndUpdateStatus(token)
-                }
-                // Load jadwal dari database (akan skip jika sudah pernah load)
-                launch {
-                    kotlinx.coroutines.delay(100) // Delay kecil untuk memastikan hasil wawancara mulai load
+                    kotlinx.coroutines.delay(100)
                     viewModel.loadJadwalWawancaraFromDatabase(token)
                 }
-                // Load data lainnya
-                launch {
-                    viewModel.loadPesertaLulusTanpaJadwal(token)
-                }
-                launch {
-                    viewModel.loadCountPesertaLulus(token)
-                }
+                launch { viewModel.loadPesertaLulusTanpaJadwal(token) }
+                launch { viewModel.loadCountPesertaLulus(token) }
                 launch {
                     jadwalViewModel?.setAuthToken(token)
-                    // Load peserta untuk semua jadwal setelah token di-set
-                    delay(600) // Tunggu setAuthToken selesai
+                    delay(600)
                     jadwalViewModel?.daftarJadwal?.forEach { jadwal ->
                         jadwalViewModel?.loadPesertaFromJadwal(jadwal.id)
                     }
@@ -235,49 +166,7 @@ fun SeleksiWawancaraScreen(
         }
     }
 
-    LaunchedEffect(viewModel.days) {
-        viewModel.days.forEachIndexed { dayIndex, day ->
-            day.participants.forEachIndexed { participantIndex, _ ->
-                val schedule = viewModel.buildReminderSchedule(dayIndex, participantIndex)
-                if (schedule != null && viewModel.registerReminder(schedule)) {
-                    InterviewAlarmScheduler.scheduleReminder(context, schedule)
-                }
-            }
-        }
-    }
 
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is InterviewEvent.FiveMinuteWarning -> {
-                    triggerWarningVibration(context)
-
-                    // Tampilkan notifikasi di drawer
-                    InterviewNotificationHelper.showWarningNotification(
-                        context = context,
-                        participantName = event.participantName,
-                        scheduleLabel = event.scheduleLabel
-                    )
-
-                    // Tampilkan Snackbar di layar
-                    snackbarHostState.showSnackbar(
-                        message = "Wawancara ${event.participantName} tersisa 5 menit lagi",
-                        duration = SnackbarDuration.Long
-                    )
-                }
-
-                is InterviewEvent.InterviewFinished -> {
-                    InterviewNotificationHelper.showCompletionNotification(
-                        context = context,
-                        participantName = event.participantName,
-                        scheduleLabel = event.scheduleLabel
-                    )
-                }
-            }
-        }
-    }
-
-    // Success snackbar handler
     LaunchedEffect(saveHasilSuccess) {
         saveHasilSuccess?.let { message ->
             snackbarHostState.showSnackbar(
@@ -329,7 +218,6 @@ fun SeleksiWawancaraScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header Card dengan Total Peserta
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -382,7 +270,6 @@ fun SeleksiWawancaraScreen(
                     }
                 }
 
-                // Modern Tabs
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = colorScheme.background,
@@ -439,27 +326,6 @@ fun SeleksiWawancaraScreen(
                 }
             }
 
-            // ============================================================================
-            // CRITICAL FIX #2: Loading Indicator untuk Load Jadwal
-            // ============================================================================
-            //
-            // MASALAH SEBELUMNYA:
-            // - Tidak ada loading indicator saat load jadwal dari database
-            // - User tidak tahu apakah data sedang di-load atau error
-            // - User tap berulang kali karena bingung (tampilan kosong)
-            //
-            // SOLUSI:
-            // - Tampilkan loading indicator dengan CircularProgressIndicator
-            // - Tampilkan text "Memuat jadwal wawancara..." untuk feedback
-            // - Cover seluruh layar dengan semi-transparent background
-            //
-            // KENAPA PENTING?
-            // - User experience: User tahu bahwa app sedang bekerja
-            // - Mencegah user tap berulang kali karena bingung
-            // - Professional: Setiap async operation harus ada loading state
-            // ============================================================================
-
-            // Loading indicator saat memuat jadwal dari database
             if (isLoadingJadwal) {
                 Box(
                     modifier = Modifier
@@ -494,7 +360,6 @@ fun SeleksiWawancaraScreen(
                 }
             }
 
-            // Loading indicator saat menyimpan hasil wawancara
             if (isSavingHasil) {
                 Box(
                     modifier = Modifier
@@ -529,7 +394,6 @@ fun SeleksiWawancaraScreen(
                 }
             }
 
-            // Error dialog
             saveHasilError?.let { error ->
                 AlertDialog(
                     onDismissRequest = { viewModel.clearSaveHasilError() },
@@ -563,15 +427,6 @@ fun SeleksiWawancaraScreen(
     }
 }
 
-/**
- * Content untuk tab Jadwal Wawancara
- *
- * Menampilkan daftar jadwal wawancara per hari dalam bentuk expandable card
- *
- * @param viewModel ViewModel untuk state management
- * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
- * @param modifier Modifier untuk styling
- */
 @Composable
 fun WawancaraJadwalContent(
     viewModel: SeleksiWawancaraViewModel,
@@ -583,18 +438,14 @@ fun WawancaraJadwalContent(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val daftarJadwal = jadwalViewModel?.daftarJadwal ?: emptyList()
-
-    // Collect state untuk peserta lulus tanpa jadwal
     val pesertaLulusTanpaJadwal = viewModel.pesertaLulusTanpaJadwal
     val isLoadingPesertaLulus by viewModel.isLoadingPesertaLulus.collectAsState()
 
-    // Load peserta dari setiap jadwal saat jadwal ditampilkan (dengan delay untuk menghindari terlalu banyak request bersamaan)
     LaunchedEffect(authState.token, daftarJadwal) {
         authState.token?.let { token ->
             if (daftarJadwal.isNotEmpty()) {
-                // Load dengan sedikit delay antara setiap jadwal untuk menghindari terlalu banyak request bersamaan
                 daftarJadwal.forEachIndexed { index, jadwal ->
-                    kotlinx.coroutines.delay(index * 100L) // Delay 100ms per jadwal
+                    kotlinx.coroutines.delay(index * 100L)
                     jadwalViewModel?.loadPesertaFromJadwal(jadwal.id)
                 }
             }
@@ -602,12 +453,9 @@ fun WawancaraJadwalContent(
     }
 
     LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Card-card jadwal rekrutmen dengan pewawancara
         if (daftarJadwal.isNotEmpty()) {
             item {
                 Text(
@@ -625,7 +473,7 @@ fun WawancaraJadwalContent(
                     jadwalViewModel = jadwalViewModel,
                     viewModel = viewModel,
                     authState = authState,
-                    pesertaLulusTanpaJadwal = emptyList(), // Tidak digunakan lagi
+                    pesertaLulusTanpaJadwal = emptyList(),
                     onClick = {
                         navController?.navigate("detailJadwalWawancara/${jadwal.id}")
                     }
@@ -803,46 +651,32 @@ fun WawancaraStatusContent(
     var filterStatus by remember { mutableStateOf<InterviewStatus?>(null) }
     val authState by authViewModel.authState.collectAsState()
     
-    // Refresh data hasil wawancara saat tab Status dibuka
     LaunchedEffect(Unit) {
         authState.token?.let { token ->
             viewModel.loadHasilWawancaraAndUpdateStatus(token)
-            // Load peserta pending juga untuk filter "Semua"
             viewModel.loadPesertaPendingWawancara(token)
         }
     }
 
     LaunchedEffect(authState.token, filterStatus) {
-        // Load peserta pending jika filter PENDING atau SEMUA (null)
         if (filterStatus == InterviewStatus.PENDING || filterStatus == null) {
-            authState.token?.let { token ->
-                viewModel.loadPesertaPendingWawancara(token)
-            }
+            authState.token?.let { token -> viewModel.loadPesertaPendingWawancara(token) }
         }
     }
 
-    // Ambil data dari hasil wawancara di database
     val hasilWawancaraList by viewModel.hasilWawancaraList.collectAsState()
-
     val pesertaPendingWawancara by viewModel.pesertaPendingWawancara.collectAsState()
     val isLoadingPesertaPendingWawancara by viewModel.isLoadingPesertaPendingWawancara.collectAsState()
 
-    // Filter berdasarkan status
     val filteredList = remember(hasilWawancaraList, filterStatus) {
-        val filtered = viewModel.getHasilWawancaraByStatus(filterStatus)
-        // Sort berdasarkan nama peserta
-        filtered.sortedBy { it.namaPeserta }
+        viewModel.getHasilWawancaraByStatus(filterStatus).sortedBy { it.namaPeserta }
     }
 
     val pendingList = remember(pesertaPendingWawancara, hasilWawancaraList) {
-        // Untuk filter "Semua", hanya tampilkan pending yang belum ada di hasil wawancara
-        // Untuk filter "Pending", tampilkan semua pending
         val hasilWawancaraPesertaIds = hasilWawancaraList.map { it.pesertaId }.toSet()
         val filteredPending = if (filterStatus == null) {
-            // Filter "Semua": hanya pending yang belum ada hasil wawancara
             pesertaPendingWawancara.filter { it.id !in hasilWawancaraPesertaIds }
         } else {
-            // Filter lain: tampilkan semua pending
             pesertaPendingWawancara
         }
         filteredPending.sortedBy { it.nama ?: "" }
@@ -850,7 +684,6 @@ fun WawancaraStatusContent(
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp)) {
 
-        // Filter chips
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -864,7 +697,7 @@ fun WawancaraStatusContent(
         Spacer(Modifier.height(12.dp))
 
         val showPendingList = filterStatus == InterviewStatus.PENDING
-        val showAllList = filterStatus == null // Filter "Semua"
+        val showAllList = filterStatus == null
 
         if ((showPendingList || showAllList) && isLoadingPesertaPendingWawancara) {
             Box(
@@ -891,7 +724,6 @@ fun WawancaraStatusContent(
                 }
             }
         } else if (!showPendingList && !showAllList && filteredList.isEmpty()) {
-            // Empty state untuk filter Diterima/Ditolak
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -913,28 +745,18 @@ fun WawancaraStatusContent(
                 }
             }
         } else if (showAllList) {
-            // Filter "Semua": tampilkan semua hasil wawancara + pending yang belum ada hasil
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Tampilkan hasil wawancara (diterima, ditolak, pending yang sudah ada)
                 itemsIndexed(filteredList) { index, hasil ->
-                    StatusRowFromHasilWawancara(
-                        no = index + 1, 
-                        hasilWawancara = hasil
-                    )
+                    StatusRowFromHasilWawancara(no = index + 1, hasilWawancara = hasil)
                 }
                 
-                // Tampilkan pending yang belum ada di hasil wawancara
                 itemsIndexed(pendingList) { index, peserta ->
-                    StatusRowFromPesertaPending(
-                        no = filteredList.size + index + 1,
-                        peserta = peserta
-                    )
+                    StatusRowFromPesertaPending(no = filteredList.size + index + 1, peserta = peserta)
                 }
                 
-                // Empty state jika tidak ada data sama sekali
                 if (filteredList.isEmpty() && pendingList.isEmpty()) {
                     item {
                         Box(
@@ -969,7 +791,6 @@ fun WawancaraStatusContent(
                 }
             }
         } else {
-            // Filter Diterima atau Ditolak
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1107,7 +928,6 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Number Badge
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -1127,7 +947,6 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
 
             Spacer(Modifier.width(12.dp))
 
-            // Name
             Text(
                 name,
                 modifier = Modifier.weight(1f),
@@ -1138,7 +957,6 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
 
             Spacer(Modifier.width(12.dp))
 
-            // Status Badge
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = statusColor.copy(alpha = 0.15f)
@@ -1199,7 +1017,6 @@ fun StatusRowFromHasilWawancara(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Number Badge
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -1219,7 +1036,6 @@ fun StatusRowFromHasilWawancara(
 
                 Spacer(Modifier.width(12.dp))
 
-                // Name (Data diri pendaftar)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         hasilWawancara.namaPeserta,
@@ -1228,7 +1044,6 @@ fun StatusRowFromHasilWawancara(
                         color = colorScheme.onSurface
                     )
                     
-                    // Tampilkan info tambahan jika ada
                     if (hasilWawancara.tanggalJadwal != null && hasilWawancara.tanggalJadwal != "-") {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -1241,7 +1056,6 @@ fun StatusRowFromHasilWawancara(
 
                 Spacer(Modifier.width(12.dp))
 
-                // Status Badge
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = statusColor.copy(alpha = 0.15f)
@@ -1260,7 +1074,6 @@ fun StatusRowFromHasilWawancara(
                 }
             }
             
-            // Tampilkan divisi jika diterima
             if (status == InterviewStatus.ACCEPTED && !hasilWawancara.divisi.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -1278,7 +1091,6 @@ fun StatusRowFromHasilWawancara(
                 }
             }
             
-            // Tampilkan alasan jika ditolak
             if (status == InterviewStatus.REJECTED && !hasilWawancara.alasan.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -1349,7 +1161,6 @@ fun ExpandableDayCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Day Icon
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -1579,7 +1390,6 @@ fun ParticipantCard(
                     }
                 }
                 
-                // Tampilkan informasi divisi atau alasan jika sudah final
                 if (participant.status == InterviewStatus.ACCEPTED && participant.division.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Surface(
@@ -1655,12 +1465,11 @@ fun ParticipantCard(
                 RejectDialog(
                     onDismiss = { showRejectDialog = false },
                     onConfirm = { reason ->
-                        // Pass token untuk API call (Fitur 16: Input Hasil Wawancara)
                         viewModel.rejectWithReason(
                             dayIndex = dayIndex,
                             index = participantIndex,
                             reason = reason,
-                            token = token  // Token dari authState
+                            token = token
                         )
                         showRejectDialog = false
                     }
@@ -1671,12 +1480,11 @@ fun ParticipantCard(
                 AcceptDialog(
                     onDismiss = { showAcceptDialog = false },
                     onConfirm = { division ->
-                        // Pass token untuk API call (Fitur 16: Input Hasil Wawancara)
                         viewModel.acceptWithDivision(
                             dayIndex = dayIndex,
                             index = participantIndex,
                             division = division,
-                            token = token  // Token dari authState
+                            token = token
                         )
                         showAcceptDialog = false
                     }
@@ -1824,7 +1632,6 @@ fun ParticipantInfoDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Status ditampilkan sebagai teks saja (sesuai permintaan)
                 Text("Status Wawancara", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 Text(
                     text = when (participant.status) {
@@ -1878,7 +1685,6 @@ fun EditScheduleDialog(
     var newTime by remember { mutableStateOf(participant.time) }
     var newLocation by remember { mutableStateOf(day.location) }
 
-    // Picker states & formatter
     val context = LocalContext.current
     val dateFormatter = remember {
         DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
@@ -2427,32 +2233,5 @@ private fun formatRemainingTime(totalSeconds: Int): String {
     val minutes = clamped / 60
     val seconds = clamped % 60
     return "%02d:%02d".format(minutes, seconds)
-}
-
-private fun triggerWarningVibration(context: Context) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val manager = context.getSystemService(VibratorManager::class.java)
-        manager?.defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Vibrator::class.java)
-    }
-
-    vibrator ?: return
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val pattern = longArrayOf(0, 400, 120, 400)
-        val amplitudes = intArrayOf(
-            0,
-            VibrationEffect.DEFAULT_AMPLITUDE,
-            0,
-            VibrationEffect.DEFAULT_AMPLITUDE
-        )
-        val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
-        vibrator.vibrate(effect)
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(600L)
-    }
 }
 
