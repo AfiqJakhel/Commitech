@@ -14,9 +14,6 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Utility class untuk generate PDF dari data pengumuman kelulusan
- */
 object PdfGenerator {
     
     private const val PAGE_WIDTH = 595 // A4 width in points (210mm)
@@ -25,15 +22,7 @@ object PdfGenerator {
     private const val LINE_HEIGHT = 20
     private const val TABLE_HEADER_HEIGHT = 30
     private const val ROW_HEIGHT = 25
-    
-    /**
-     * Generate PDF dari data divisi dan peserta yang lulus
-     * 
-     * @param context Context aplikasi
-     * @param daftarDivisi List divisi dengan peserta yang lulus
-     * @param onSuccess Callback saat PDF berhasil dibuat (mengembalikan URI file)
-     * @param onError Callback saat terjadi error
-     */
+
     fun generatePengumumanPDF(
         context: Context,
         daftarDivisi: List<DivisiData>,
