@@ -50,7 +50,9 @@ class JadwalViewModel : ViewModel() {
     val pesertaPerJadwalUpdateTrigger: kotlinx.coroutines.flow.StateFlow<Int> = _pesertaPerJadwalUpdateTrigger.asStateFlow()
     
     fun getPesertaByJadwalId(jadwalId: Int): List<Peserta> {
-        return _pesertaPerJadwal[jadwalId] ?: emptyList()
+        // Return snapshot copy agar Compose selalu melihat perubahan (add/remove)
+        // meskipun underlying storage menggunakan MutableList biasa.
+        return (_pesertaPerJadwal[jadwalId] ?: emptyList()).toList()
     }
     
     /**

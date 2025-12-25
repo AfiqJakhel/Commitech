@@ -411,7 +411,7 @@ fun TambahJadwalScreen(
             }
 
             if (waktuSelesaiDialog) {
-                val timeState = rememberTimePickerState(initialHour = 15, initialMinute = 0)
+                val timeState = rememberTimePickerState(initialHour = 15, initialMinute =   0)
                 AlertDialog(
                     onDismissRequest = { waktuSelesaiDialog = false },
                     confirmButton = {

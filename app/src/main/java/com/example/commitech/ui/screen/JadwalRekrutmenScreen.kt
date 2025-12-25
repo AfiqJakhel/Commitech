@@ -45,8 +45,7 @@ fun JadwalRekrutmenScreen(
 ) {
     val context = LocalContext.current
     val daftarJadwal = viewModel.daftarJadwal
-    
-    // Schedule alarm untuk semua jadwal yang ada (H-1)
+
     LaunchedEffect(daftarJadwal) {
         daftarJadwal.forEach { jadwal ->
             InterviewAlarmScheduler.scheduleJadwalReminder(
@@ -66,7 +65,6 @@ fun JadwalRekrutmenScreen(
         (1..currentMonth.lengthOfMonth()).map { currentMonth.atDay(it) }
     }
 
-    // Ambil semua tanggal yang ada jadwal
     val tanggalJadwal = daftarJadwal.flatMap { jadwal ->
         try {
             val start = LocalDate.parse(jadwal.tanggalMulai, viewModel.formatter)
@@ -75,7 +73,7 @@ fun JadwalRekrutmenScreen(
                 .plus(end)
                 .toList()
         } catch (e: Exception) {
-            emptyList() // kalau parsing gagal, lewati saja jadwal ini
+            emptyList()
         }
     }
 
@@ -116,7 +114,6 @@ fun JadwalRekrutmenScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ===== Kalender =====
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,7 +130,6 @@ fun JadwalRekrutmenScreen(
                         .fillMaxWidth()
                         .padding(20.dp)
                 ) {
-                    // Header bulan
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -163,7 +159,6 @@ fun JadwalRekrutmenScreen(
                         }
                     }
 
-                    // Hari
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min").forEach {
                             Text(
@@ -179,7 +174,6 @@ fun JadwalRekrutmenScreen(
 
                     Spacer(Modifier.height(6.dp))
 
-                    // Grid tanggal
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(7),
                         userScrollEnabled = false,
@@ -240,7 +234,6 @@ fun JadwalRekrutmenScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // ===== Tombol Tambah Jadwal =====
             Button(
                 onClick = {
                     navController.navigate("tambahJadwal")
@@ -272,7 +265,6 @@ fun JadwalRekrutmenScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ===== Daftar Jadwal =====
             daftarJadwal.forEach { jadwal ->
                 Card(
                     modifier = Modifier
@@ -391,8 +383,7 @@ fun JadwalRekrutmenScreen(
                     }
                 }
             }
-            
-            // Spacer untuk padding bawah agar jadwal terakhir tidak terpotong
+
             Spacer(Modifier.height(16.dp))
         }
     }

@@ -79,7 +79,7 @@ fun AboutUsScreen(
     val colorScheme = MaterialTheme.colorScheme
     var isVisible by remember { mutableStateOf(false) }
     
-    // Trigger animation on screen load
+
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
@@ -97,7 +97,7 @@ fun AboutUsScreen(
             .fillMaxSize()
             .background(colorScheme.background)
     ) {
-        // Top App Bar
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = colorScheme.surface,
@@ -133,7 +133,7 @@ fun AboutUsScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp)
         ) {
-            // App Logo with animation
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -159,7 +159,7 @@ fun AboutUsScreen(
                 }
             }
 
-            // App Title with animation
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -179,7 +179,7 @@ fun AboutUsScreen(
                 }
             }
 
-            // Description Card with animation
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -192,7 +192,7 @@ fun AboutUsScreen(
                 }
             }
 
-            // Team Section Header
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -222,7 +222,7 @@ fun AboutUsScreen(
                 }
             }
 
-            // Developer Carousel
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -236,7 +236,7 @@ fun AboutUsScreen(
                 }
             }
 
-            // Footer with animation
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -329,7 +329,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Carousel
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -345,7 +345,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        // Scale effect based on position
+
                         val scale = lerp(
                             start = 0.85f,
                             stop = 1f,
@@ -354,7 +354,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
                         scaleX = scale
                         scaleY = scale
                         
-                        // Alpha effect
+
                         alpha = lerp(
                             start = 0.5f,
                             stop = 1f,
@@ -386,7 +386,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Avatar
+
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
@@ -411,7 +411,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Name
+
                         Text(
                             text = developer.name,
                             fontSize = 20.sp,
@@ -422,7 +422,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // NIM
+
                         Text(
                             text = developer.nim,
                             fontSize = 16.sp,
@@ -432,7 +432,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         
-                        // Decorative line
+
                         Box(
                             modifier = Modifier
                                 .width(60.dp)
@@ -447,7 +447,7 @@ fun DeveloperCarousel(developers: List<Developer>) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Page Indicators
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,

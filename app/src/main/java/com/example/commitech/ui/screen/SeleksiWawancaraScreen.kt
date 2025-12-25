@@ -977,10 +977,6 @@ fun StatusRow(no: Int, name: String, status: InterviewStatus) {
     }
 }
 
-/**
- * StatusRow untuk menampilkan data dari hasil wawancara (dari database)
- * Menampilkan data diri pendaftar lengkap dengan status, divisi (jika diterima), atau alasan (jika ditolak)
- */
 @Composable
 fun StatusRowFromHasilWawancara(
     no: Int,
@@ -1111,18 +1107,6 @@ fun StatusRowFromHasilWawancara(
     }
 }
 
-/**
- * Expandable card untuk menampilkan jadwal wawancara per hari
- *
- * Card ini bisa di-expand untuk melihat daftar peserta yang akan diwawancara
- *
- * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
- * - Menggunakan authState untuk mendapatkan token untuk API call
- *
- * @param viewModel ViewModel untuk state management
- * @param dayIndex Index hari dalam jadwal
- * @param authState AuthState untuk mendapatkan token (diperlukan untuk API call)
- */
 @Composable
 fun ExpandableDayCard(
     viewModel: SeleksiWawancaraViewModel,
@@ -1242,26 +1226,6 @@ fun ExpandableDayCard(
     }
 }
 
-/**
- * Card untuk menampilkan informasi peserta dalam jadwal wawancara
- *
- * Card ini menampilkan:
- * - Nama peserta
- * - Waktu wawancara
- * - Status hasil wawancara
- * - Tombol untuk Accept/Reject peserta
- * - Timer wawancara
- *
- * Fitur: Modul 4 - Fitur 16: Input Hasil Wawancara
- * - Integrasi dengan backend API saat Accept/Reject peserta
- *
- * @param participant Data peserta
- * @param day Data hari jadwal
- * @param dayIndex Index hari
- * @param participantIndex Index peserta dalam hari tersebut
- * @param viewModel ViewModel untuk state management
- * @param token Token autentikasi untuk API call (nullable, akan error jika null)
- */
 @Composable
 fun ParticipantCard(
     participant: ParticipantData,
@@ -1698,15 +1662,13 @@ fun EditScheduleDialog(
             color = Color.White
         ) {
             Column(Modifier.padding(24.dp)) {
-                // Header dengan icon
                 Box(
                     modifier = Modifier
                         .size(64.dp)
                         .background(
                             color = Color(0xFF2196F3).copy(alpha = 0.1f),
                             shape = CircleShape
-                        )
-                        .align(Alignment.CenterHorizontally),
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -1736,7 +1698,6 @@ fun EditScheduleDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Tanggal
                 Text(
                     "Tanggal",
                     fontSize = 14.sp,
@@ -1799,7 +1760,6 @@ fun EditScheduleDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Waktu
                 Text(
                     "Waktu",
                     fontSize = 14.sp,
@@ -1839,7 +1799,6 @@ fun EditScheduleDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Tempat
                 Text(
                     "Tempat",
                     fontSize = 14.sp,
@@ -1858,7 +1817,7 @@ fun EditScheduleDialog(
                 Spacer(Modifier.height(24.dp))
 
                 Row(
-                    Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
@@ -1935,7 +1894,6 @@ fun RejectDialog(
                 Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header dengan icon X merah
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -1973,7 +1931,6 @@ fun RejectDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // TextField dengan label
                 Text(
                     "Alasan Penolakan",
                     fontSize = 14.sp,
@@ -2001,7 +1958,6 @@ fun RejectDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -2066,7 +2022,6 @@ fun AcceptDialog(
                 Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header dengan icon
                 Box(
                     modifier = Modifier
                         .size(64.dp)
@@ -2102,7 +2057,6 @@ fun AcceptDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Division cards
                 divisions.forEach { (division, icon) ->
                     Card(
                         modifier = Modifier
@@ -2183,7 +2137,6 @@ fun AcceptDialog(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

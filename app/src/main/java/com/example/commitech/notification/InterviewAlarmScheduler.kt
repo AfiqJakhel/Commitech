@@ -36,10 +36,7 @@ object InterviewAlarmScheduler {
         )
     }
 
-    /**
-     * Schedule reminder untuk jadwal rekrutmen H-1 (sehari sebelum jadwal)
-     * Notifikasi akan muncul sehari sebelum tanggal mulai jadwal
-     */
+  
     fun scheduleJadwalReminder(
         context: Context,
         jadwalId: Int,

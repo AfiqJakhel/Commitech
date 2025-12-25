@@ -51,7 +51,6 @@ import com.example.commitech.ui.viewmodel.PesertaWawancaraState
 import com.example.commitech.data.model.HasilWawancaraResponse
 import com.example.commitech.notification.InterviewNotificationHelper
 
-// Dialog functions - defined before use
 @Composable
 fun DialogPilihPeserta(
     pesertaDiterima: List<Peserta>,
@@ -78,7 +77,6 @@ fun DialogPilihPeserta(
                     .fillMaxSize()
                     .padding(20.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -108,7 +106,6 @@ fun DialogPilihPeserta(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // List peserta
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -209,7 +206,6 @@ fun DialogPilihPeserta(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Button konfirmasi
                 Button(
                     onClick = { onConfirm(selectedPeserta) },
                     modifier = Modifier.fillMaxWidth(),
@@ -263,7 +259,6 @@ fun DialogPilihWaktu(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Time options grid
                 LazyColumn(
                     modifier = Modifier.height(200.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -380,7 +375,6 @@ fun DialogPilihDivisi(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Division options
                 LazyColumn(
                     modifier = Modifier.height(200.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -459,54 +453,41 @@ fun DetailJadwalWawancaraScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Collect authState untuk mendapatkan token
-    val authState by authViewModel?.authState?.collectAsState() ?: remember { 
-        mutableStateOf(com.example.commitech.ui.viewmodel.AuthState()) 
-    }
+    val authState by authViewModel?.authState?.collectAsState() ?: remember { mutableStateOf(com.example.commitech.ui.viewmodel.AuthState()) }
     val authToken = authState.token
 
-    // Collect pesertaDiterima sebagai State untuk reactive updates
     val pesertaDiterima by seleksiBerkasViewModel.pesertaList.collectAsState()
-    
-    // Ambil list hasil wawancara untuk filter peserta yang sudah ada
+
     val hasilWawancaraList by seleksiWawancaraViewModel?.hasilWawancaraList?.collectAsState() ?: remember { mutableStateOf(emptyList<HasilWawancaraResponse>()) }
-    
-    // Buat set peserta_id yang sudah ada di hasil_wawancara
+
     val pesertaIdDiHasilWawancara = remember(hasilWawancaraList) {
         hasilWawancaraList.map { it.pesertaId }.toSet()
     }
-    
-    // Observe perubahan pesertaPerJadwal dengan StateFlow trigger
+
     val pesertaPerJadwalUpdateTrigger by jadwalViewModel.pesertaPerJadwalUpdateTrigger.collectAsState()
-    
-    // Ambil peserta yang sudah dipilih untuk jadwal ini - REACTIVE dengan remember
+
     val pesertaTerpilih = remember(jadwal.id, pesertaPerJadwalUpdateTrigger) {
         jadwalViewModel.getPesertaByJadwalId(jadwal.id)
     }
 
-    // Collect states dari detailViewModel
     val isSavingHasil by detailViewModel.isSavingHasil.collectAsState()
     val saveHasilError by detailViewModel.saveHasilError.collectAsState()
     val saveHasilSuccess by detailViewModel.saveHasilSuccess.collectAsState()
 
     var pesertaToDelete by remember { mutableStateOf<Peserta?>(null) }
 
-    // Initialize peserta states - trigger ketika pesertaTerpilih berubah
-    // Pastikan initialize dilakukan untuk semua peserta baru
     LaunchedEffect(pesertaTerpilih.size, pesertaPerJadwalUpdateTrigger) {
         pesertaTerpilih.forEach { peserta ->
             detailViewModel.initPesertaState(peserta)
         }
     }
-    
-    // Juga initialize saat pesertaTerpilih berubah (untuk memastikan semua peserta ter-initialize)
+
     LaunchedEffect(pesertaTerpilih) {
         pesertaTerpilih.forEach { peserta ->
             detailViewModel.initPesertaState(peserta)
         }
     }
 
-    // Show snackbar for errors/success
     LaunchedEffect(saveHasilError) {
         saveHasilError?.let { error ->
             scope.launch {
@@ -515,103 +496,72 @@ fun DetailJadwalWawancaraScreen(
         }
     }
 
-    // Track peserta yang baru saja diterima/ditolak untuk dihapus dari jadwal
     var pesertaToRemove by remember { mutableStateOf<Peserta?>(null) }
-    
+
     LaunchedEffect(saveHasilSuccess) {
         saveHasilSuccess?.let { success ->
             scope.launch {
                 snackbarHostState.showSnackbar(success, duration = SnackbarDuration.Long)
-                
-                // Refresh status di SeleksiWawancaraViewModel agar muncul di tab Status
-                // Lakukan refresh segera setelah berhasil menyimpan
+
                 authToken?.let { token ->
-                    delay(300) // Delay kecil untuk memastikan API sudah selesai
+                    delay(300)
                     seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token, forceReload = true)
-                    // Refresh peserta dari jadwal untuk update jumlah peserta
                     jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
                 }
-                
-                // TIDAK menghapus peserta dari jadwal - peserta tetap ditampilkan dengan status
-                // Peserta akan tetap ada di jadwal dengan status diterima/ditolak
+
                 pesertaToRemove = null
             }
         }
     }
-    
-    // Dapatkan semua peserta yang sudah ada di jadwal lain (untuk filter)
+
     val pesertaDiJadwalLain = remember(jadwal.id, jadwalViewModel.pesertaPerJadwal) {
         jadwalViewModel.getAllPesertaNamaDiJadwalLain(jadwal.id)
     }
-    
-    // Filter peserta yang lulus, belum ada di jadwal lain, dan belum ada di hasil_wawancara dengan status diterima/ditolak
-    // Hanya tampilkan peserta yang BELUM punya jadwal wawancara (belum ada di jadwal manapun)
-    // Note: hasilWawancaraList sudah dideklarasikan di atas (line 457)
+
     val pesertaDiterimaFiltered = remember(pesertaDiterima, pesertaDiJadwalLain, pesertaIdDiHasilWawancara, hasilWawancaraList) {
         pesertaDiterima.filter { peserta ->
-            // Hanya peserta yang lulus seleksi berkas
             val lulusBerkas = peserta.statusSeleksiBerkas == "lulus"
-            
-            // Belum ada di jadwal lain (termasuk jadwal ini)
-            // Ini sudah memfilter peserta yang sudah punya jadwal wawancara
+
             val belumAdaDiJadwal = peserta.nama !in pesertaDiJadwalLain
-            
-            // Belum punya tanggal_jadwal (belum punya jadwal wawancara)
+
             val belumPunyaJadwal = peserta.tanggalJadwal.isNullOrBlank()
-            
-            // Belum ada di hasil_wawancara dengan status diterima/ditolak (pending masih bisa ditambahkan)
+
             val belumFinal = if (peserta.id == null) {
-                true // Jika tidak ada ID, tetap tampilkan
+                true
             } else {
                 val hasilWawancara = hasilWawancaraList.find { it.pesertaId == peserta.id }
-                // Hanya filter jika statusnya diterima atau ditolak (bukan pending)
                 hasilWawancara == null || (hasilWawancara.status != "diterima" && hasilWawancara.status != "ditolak")
             }
-            
+
             lulusBerkas && belumAdaDiJadwal && belumPunyaJadwal && belumFinal
         }
     }
-    
-    // State untuk dialog pemilihan peserta
+
     var showDialogPilihPeserta by remember { mutableStateOf(false) }
 
-                // Tampilkan SEMUA peserta yang ada di jadwal, termasuk yang sudah diterima/ditolak
-                // Status akan ditampilkan di card peserta
-                // Observe timerTick untuk trigger recomposition saat status berubah
-                val timerTick by detailViewModel.timerTick.collectAsState()
-                // Note: hasilWawancaraList sudah dideklarasikan di atas (line 457)
-                
-                // Tampilkan semua peserta (tidak filter yang sudah final)
-                val pesertaPending = remember(pesertaTerpilih, timerTick, pesertaPerJadwalUpdateTrigger, hasilWawancaraList) {
-                    // Tampilkan semua peserta, status akan ditampilkan di card
-                    pesertaTerpilih
-                }
-    
-    // Load peserta dari database saat screen dibuka
+    val timerTick by detailViewModel.timerTick.collectAsState()
+
+    val pesertaPending = remember(pesertaTerpilih, timerTick, pesertaPerJadwalUpdateTrigger, hasilWawancaraList) {
+        pesertaTerpilih
+    }
+
     LaunchedEffect(jadwal.id, jadwalViewModel.daftarJadwal.size) {
         jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
-        
-        // Load peserta dari semua jadwal untuk filter (dengan delay untuk menghindari terlalu banyak request bersamaan)
+
         jadwalViewModel.daftarJadwal.forEachIndexed { index, otherJadwal ->
             if (otherJadwal.id != jadwal.id) {
-                delay(index * 100L) // Delay 100ms per jadwal
+                delay(index * 100L)
                 jadwalViewModel.loadPesertaFromJadwal(otherJadwal.id)
             }
         }
-        
-        // Set token ke SeleksiBerkasViewModel untuk load peserta dari database
-        // Pastikan hanya peserta dengan status "lulus" yang ditampilkan
+
         authToken?.let { token ->
             seleksiBerkasViewModel.setAuthToken(token)
-            // Load hasil wawancara untuk filter peserta yang sudah ada di tabel hasil_wawancara
             seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
         }
     }
-    
-    // Refresh peserta diterima saat data berubah
+
     LaunchedEffect(seleksiBerkasViewModel.pesertaList) {
-        // Data sudah otomatis ter-update karena menggunakan StateFlow
-        // pesertaDiterima akan otomatis memfilter peserta dengan lulusBerkas = true
     }
 
     Scaffold(
@@ -735,7 +685,7 @@ fun DetailJadwalWawancaraScreen(
                     }
                 }
             }
-            
+
             item {
                 Text(
                     text = "${pesertaTerpilih.size}/5 peserta dipilih",
@@ -782,7 +732,10 @@ fun DetailJadwalWawancaraScreen(
                     }
                 }
             } else {
-                items(pesertaPending) { peserta ->
+                items(
+                    items = pesertaPending,
+                    key = { peserta -> peserta.id ?: peserta.nama }
+                ) { peserta ->
                     val pesertaState = detailViewModel.getPesertaState(peserta)
                     PesertaCardWawancara(
                         peserta = peserta,
@@ -794,7 +747,6 @@ fun DetailJadwalWawancaraScreen(
                         jadwalId = jadwal.id,
                         seleksiWawancaraViewModel = seleksiWawancaraViewModel,
                         onTerimaTolak = {
-                            // Set peserta untuk dihapus setelah sukses menyimpan
                             pesertaToRemove = peserta
                         },
                         onHapus = {
@@ -846,30 +798,28 @@ fun DetailJadwalWawancaraScreen(
             shape = RoundedCornerShape(16.dp)
         )
     }
-    
-    // Dialog untuk memilih peserta
+
     if (showDialogPilihPeserta) {
-        // Refresh hasil wawancara saat dialog dibuka untuk memastikan filter up-to-date
         LaunchedEffect(showDialogPilihPeserta) {
             authToken?.let { token ->
                 seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
             }
         }
-        
+
         DialogPilihPeserta(
             pesertaDiterima = pesertaDiterimaFiltered,
             pesertaTerpilih = pesertaTerpilih,
             onDismiss = { showDialogPilihPeserta = false },
             onConfirm = { selectedPeserta: List<Peserta> ->
                 jadwalViewModel.setPesertaUntukJadwal(jadwal.id, selectedPeserta)
-                // Initialize state untuk peserta yang baru ditambahkan
+
                 selectedPeserta.forEach { peserta ->
                     detailViewModel.initPesertaState(peserta)
                 }
-                // Reload peserta dari database untuk memastikan data ter-update
+
                 authToken?.let { token ->
                     jadwalViewModel.setAuthToken(token)
-                    // Load ulang peserta untuk jadwal ini
+
                     jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
                 }
                 showDialogPilihPeserta = false
@@ -898,33 +848,23 @@ fun PesertaCardWawancara(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Local state untuk timer (simple, tanpa backend)
     var isTimerRunning by remember(peserta.id, peserta.nama) { mutableStateOf(false) }
     var remainingSeconds by remember(peserta.id, peserta.nama) { mutableIntStateOf(0) }
     var timerDuration by remember(peserta.id, peserta.nama) { mutableIntStateOf(0) }
-    
-    // State untuk notifikasi 5 menit - menggunakan peserta.id dan peserta.nama sebagai key
-    // agar state ter-reset ketika peserta berbeda
+
     var hasWarned5Minutes by remember(peserta.id, peserta.nama) { mutableStateOf(false) }
 
-    // Initialize peserta state jika belum ada
     LaunchedEffect(peserta.id, peserta.nama) {
         detailViewModel.initPesertaState(peserta)
     }
 
-    // Observe timer tick untuk trigger recomposition setiap detik
     val timerTick by detailViewModel.timerTick.collectAsState()
 
-    // Get updated state untuk status (diterima/ditolak)
-    // Prioritas: status_wawancara dari peserta > state dari ViewModel
     val currentState = detailViewModel.getPesertaState(peserta)
     val statusWawancara = peserta.statusWawancara?.lowercase()?.trim() ?: "pending"
-    
-    // Cek juga dari hasil wawancara untuk mendapatkan divisi dan alasan
+
     val hasilWawancara = seleksiWawancaraViewModel?.getHasilWawancaraByPesertaId(peserta.id ?: -1)
-    
-    // Tentukan status berdasarkan status_wawancara dari peserta (prioritas utama)
-    // Gunakan remember dengan key timerTick untuk trigger recomposition saat status berubah
+
     val finalStatus = remember(timerTick, statusWawancara, hasilWawancara?.status, currentState?.status) {
         when {
             statusWawancara == "diterima" -> InterviewStatus.ACCEPTED
@@ -936,15 +876,14 @@ fun PesertaCardWawancara(
             else -> InterviewStatus.PENDING
         }
     }
-    
-    // Ambil divisi dan alasan dari hasil wawancara jika ada
+
     val divisi = remember(timerTick, hasilWawancara?.divisi, currentState?.divisi) {
         hasilWawancara?.divisi ?: currentState?.divisi ?: ""
     }
     val alasan = remember(timerTick, hasilWawancara?.alasan, currentState?.alasan) {
         hasilWawancara?.alasan ?: currentState?.alasan ?: ""
     }
-    
+
     val updatedState = remember(timerTick, currentState, finalStatus, divisi, alasan) {
         currentState?.copy(
             status = finalStatus,
@@ -958,16 +897,12 @@ fun PesertaCardWawancara(
             alasan = alasan
         )
     }
-    
-    // Flag untuk menentukan apakah peserta sudah final (tidak bisa di-wawancara ulang)
+
     val isFinalStatus = finalStatus == InterviewStatus.ACCEPTED || finalStatus == InterviewStatus.REJECTED
 
-    // Countdown timer sederhana - tidak perlu backend
-    // Gunakan LaunchedEffect untuk countdown yang berjalan setiap detik
     LaunchedEffect(isTimerRunning) {
         if (!isTimerRunning) return@LaunchedEffect
 
-        // Baca nilai terbaru dari state saat timer dimulai/resume
         var currentSeconds = remainingSeconds
 
         while (currentSeconds > 0 && isTimerRunning) {
@@ -980,19 +915,14 @@ fun PesertaCardWawancara(
             isTimerRunning = false
         }
     }
-    
+
     LaunchedEffect(remainingSeconds, isTimerRunning, hasWarned5Minutes) {
         val fiveMinutesInSeconds = 5 * 60
         val fiveMinutes = 5
-        
-        if (isTimerRunning && 
-            remainingSeconds <= fiveMinutesInSeconds && 
-            remainingSeconds > 0 &&
-            !hasWarned5Minutes &&
-            timerDuration > fiveMinutes
-        ) {
+
+        if (isTimerRunning && remainingSeconds <= fiveMinutesInSeconds && remainingSeconds > 0 && !hasWarned5Minutes && timerDuration > fiveMinutes) {
             hasWarned5Minutes = true
-            
+
             val minutesLeft = remainingSeconds / 60
             val secondsLeft = remainingSeconds % 60
             val timeLeftText = if (minutesLeft > 0) {
@@ -1000,15 +930,15 @@ fun PesertaCardWawancara(
             } else {
                 "$secondsLeft detik"
             }
-            
+
             triggerWarningVibration(context)
-            
+
             InterviewNotificationHelper.showWarningNotification(
                 context = context,
                 participantName = peserta.nama,
                 scheduleLabel = "Sisa waktu $timeLeftText"
             )
-            
+
             snackbarHostState?.let { hostState ->
                 scope.launch {
                     hostState.showSnackbar(
@@ -1019,21 +949,19 @@ fun PesertaCardWawancara(
             }
         }
     }
-    
+
     LaunchedEffect(timerDuration) {
         if (timerDuration > 0) {
             hasWarned5Minutes = false
         }
     }
 
-    // Format remaining time
     val minutes = remainingSeconds / 60
     val seconds = remainingSeconds % 60
     val remainingTime = String.format("%02d:%02d", minutes, seconds)
 
     val isSavingHasil by detailViewModel.isSavingHasil.collectAsState()
 
-    // Collect success/error messages
     val saveHasilSuccess by detailViewModel.saveHasilSuccess.collectAsState()
     val saveHasilError by detailViewModel.saveHasilError.collectAsState()
 
@@ -1051,7 +979,6 @@ fun PesertaCardWawancara(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1090,7 +1017,6 @@ fun PesertaCardWawancara(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Badge "Lulus Seleksi Berkas" - selalu tampilkan
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = Color(0xFF4CAF50).copy(alpha = 0.1f)
@@ -1103,8 +1029,6 @@ fun PesertaCardWawancara(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
-
-                            // Status badge wawancara dihapus - hanya tampilkan di banner bawah
                         }
                     }
                 }
@@ -1128,13 +1052,10 @@ fun PesertaCardWawancara(
                     }
                 }
             }
-            
+
             Spacer(Modifier.height(12.dp))
 
-            // Timer section dan action buttons (only show if pending)
-            // JIKA SUDAH FINAL (diterima/ditolak), tampilkan informasi status saja, TIDAK tampilkan tombol action
             if (!isFinalStatus && updatedState.status == InterviewStatus.PENDING) {
-                // Timer display (jika sudah dimulai) - simple countdown
                 if (timerDuration > 0 || remainingSeconds > 0) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1177,10 +1098,8 @@ fun PesertaCardWawancara(
                             )
                         }
 
-                        // Button pause/resume
                         if (remainingSeconds > 0) {
                             if (isTimerRunning) {
-                                // Button pause
                                 IconButton(
                                     onClick = { isTimerRunning = false },
                                     modifier = Modifier.size(36.dp)
@@ -1193,7 +1112,6 @@ fun PesertaCardWawancara(
                                     )
                                 }
                             } else {
-                                // Button resume
                                 IconButton(
                                     onClick = { isTimerRunning = true },
                                     modifier = Modifier.size(36.dp)
@@ -1210,10 +1128,8 @@ fun PesertaCardWawancara(
                     }
                     Spacer(Modifier.height(12.dp))
                 } else {
-                    // Button Mulai (jika timer belum dimulai) - selalu tampilkan untuk memulai countdown
                     Button(
                         onClick = {
-                            // Pastikan state sudah di-initialize sebelum membuka dialog
                             detailViewModel.initPesertaState(peserta)
                             showTimeDialog = true
                         },
@@ -1222,7 +1138,7 @@ fun PesertaCardWawancara(
                             containerColor = colorScheme.primary
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && !isFinalStatus // Nonaktifkan jika sudah final
+                        enabled = !isSavingHasil && !isFinalStatus
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -1235,18 +1151,14 @@ fun PesertaCardWawancara(
                     Spacer(Modifier.height(12.dp))
                 }
 
-                // Action buttons - SELALU tampilkan jika status masih PENDING
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Button Tolak
                     Button(
                         onClick = {
-                            // Pastikan state sudah di-initialize
                             detailViewModel.initPesertaState(peserta)
                             detailViewModel.rejectPeserta(peserta, authToken)
-                            // Set peserta untuk dihapus setelah sukses menyimpan
                             onTerimaTolak()
                         },
                         modifier = Modifier.weight(1f),
@@ -1255,7 +1167,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null && !isFinalStatus // Nonaktifkan jika sudah final
+                        enabled = !isSavingHasil && authToken != null && !isFinalStatus
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbDown,
@@ -1266,10 +1178,8 @@ fun PesertaCardWawancara(
                         Text("Tolak")
                     }
 
-                    // Button Terima
                     Button(
                         onClick = {
-                            // Pastikan state sudah di-initialize sebelum membuka dialog
                             detailViewModel.initPesertaState(peserta)
                             showDivisionDialog = true
                         },
@@ -1279,7 +1189,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFF4CAF50).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null && !isFinalStatus // Nonaktifkan jika sudah final
+                        enabled = !isSavingHasil && authToken != null && !isFinalStatus
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbUp,
@@ -1291,7 +1201,6 @@ fun PesertaCardWawancara(
                     }
                 }
             } else if (updatedState.status == InterviewStatus.ACCEPTED) {
-                // Show division info if accepted - tampilkan dengan lebih jelas
                 Spacer(Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -1332,7 +1241,6 @@ fun PesertaCardWawancara(
                     }
                 }
             } else if (updatedState.status == InterviewStatus.REJECTED) {
-                // Show rejection info if rejected - tampilkan dengan lebih jelas
                 Spacer(Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -1382,12 +1290,12 @@ fun PesertaCardWawancara(
                 }
             }
 
-            // Time selection dialog
+
             if (showTimeDialog) {
                 DialogPilihWaktu(
                     onDismiss = { showTimeDialog = false },
                     onConfirm = { minutes: Int ->
-                        // Set durasi dan mulai countdown sederhana (tidak perlu backend)
+
                         timerDuration = minutes
                         remainingSeconds = minutes * 60
                         isTimerRunning = true
@@ -1397,15 +1305,15 @@ fun PesertaCardWawancara(
                 )
             }
 
-            // Division selection dialog
+
             if (showDivisionDialog) {
                 DialogPilihDivisi(
                     onDismiss = { showDivisionDialog = false },
                     onConfirm = { divisi: String ->
-                        // Pastikan state sudah di-initialize sebelum accept peserta
+
                         detailViewModel.initPesertaState(peserta)
                         detailViewModel.acceptPeserta(peserta, divisi, authToken)
-                        // Set peserta untuk dihapus setelah sukses menyimpan
+
                         onTerimaTolak()
                         showDivisionDialog = false
                     },
@@ -1416,10 +1324,7 @@ fun PesertaCardWawancara(
     }
 }
 
-/**
- * Trigger vibration untuk warning 5 menit tersisa
- * Menggunakan pattern vibration untuk memberikan feedback yang jelas
- */
+
 private fun triggerWarningVibration(context: android.content.Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val manager = context.getSystemService(VibratorManager::class.java)
@@ -1432,7 +1337,7 @@ private fun triggerWarningVibration(context: android.content.Context) {
     vibrator ?: return
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        // Pattern: jeda, getar, jeda, getar (memberikan 2x getar untuk peringatan)
+
         val pattern = longArrayOf(0, 400, 120, 400)
         val amplitudes = intArrayOf(
             0,
