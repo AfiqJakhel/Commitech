@@ -29,7 +29,7 @@ import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 
 data class Peserta(
-    val id: Int? = null, // ID dari database (untuk API call)
+    val id: Int? = null,
     val nama: String,
     val nim: String? = null,
     val email: String? = null,
@@ -40,14 +40,14 @@ data class Peserta(
     val alasan1: String? = null,
     val divisi2: String? = null,
     val alasan2: String? = null,
-    val krsTerakhir: String? = null, // Link KRS
-    val formulirPendaftaran: String? = null, // Link atau status formulir
-    val suratKomitmen: String? = null, // Link atau status surat komitmen
+    val krsTerakhir: String? = null,
+    val formulirPendaftaran: String? = null,
+    val suratKomitmen: String? = null,
     val lulusBerkas: Boolean,
     val ditolak: Boolean,
-    val statusSeleksiBerkas: String? = null, // Status dari database: belum_direview, lulus, tidak_lulus
-    val statusWawancara: String? = null, // Status wawancara dari database: pending, diterima, ditolak
-    val tanggalJadwal: String? = null // Tanggal jadwal wawancara (jika sudah punya jadwal)
+    val statusSeleksiBerkas: String? = null,
+    val statusWawancara: String? = null,
+    val tanggalJadwal: String? = null
 )
 
 data class SeleksiBerkasState(
@@ -71,51 +71,21 @@ class SeleksiBerkasViewModel(
     
     private val _state = MutableStateFlow(SeleksiBerkasState())
     val state: StateFlow<SeleksiBerkasState> = _state.asStateFlow()
-    
-    // Convenience getters untuk backward compatibility dengan UI yang sudah ada
-    val isLoading: StateFlow<Boolean> = _state.map { it.isLoading }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = _state.value.isLoading
-    )
-    
+
     val error: StateFlow<String?> = _state.map { it.error }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = _state.value.error
     )
-    
-    // Daftar peserta yang sudah diterima (lulus berkas)
-    // Hanya peserta dengan status_seleksi_berkas == "lulus" yang ditampilkan
-    val pesertaDiterima: List<Peserta> get() = _pesertaList.value.filter { 
-        it.statusSeleksiBerkas == "lulus" 
-    }
-    
-    // Cek apakah semua peserta sudah direview
+
     val semuaPesertaSudahDireview: Boolean get() = _pesertaList.value.isNotEmpty() && 
         _pesertaList.value.all { it.statusSeleksiBerkas != null && it.statusSeleksiBerkas != "belum_direview" }
 
-    /**
-     * Set auth token dan load data dari database
-     */
     fun setAuthToken(token: String) {
         authToken = token
         loadPesertaFromDatabase()
     }
 
-    /**
-     * Load peserta dari database via API dengan pagination
-     * 
-     * CATATAN PENTING:
-     * - Menggunakan endpoint yang SAMA dengan Data Pendaftar: GET /api/peserta
-     * - Mengambil data dari tabel database yang SAMA: tabel `peserta`
-     * - Tapi fungsi dan tampilannya BERBEDA:
-     *   * Data Pendaftar: menampilkan semua data peserta untuk CRUD
-     *   * Seleksi Berkas: untuk proses seleksi berkas dengan button Terima/Tolak
-     * 
-     * Semua peserta diinisialisasi dengan status belum direview (lulusBerkas=false, ditolak=false)
-     * Button Terima/Tolak akan muncul untuk semua peserta
-     */
     fun loadPesertaFromDatabase(page: Int = 1, append: Boolean = false) {
         if (!isTokenValid()) {
             Log.w("SeleksiBerkasViewModel", "AuthToken tidak valid, tidak bisa load peserta dari database")
@@ -127,19 +97,17 @@ class SeleksiBerkasViewModel(
             if (!append) {
                 _state.value = _state.value.copy(isLoading = true, error = null)
             }
-            
-            // Retry mechanism untuk handle intermittent connection issues
+
             var success = false
             var lastError: String? = null
-            val maxRetries = 3 // Coba maksimal 3 kali
+            val maxRetries = 3
             
             repeat(maxRetries) { attempt ->
                 if (success) return@repeat
                 
                 try {
                     Log.d("SeleksiBerkasViewModel", "Memulai load peserta dari database... Page: $page (Attempt ${attempt + 1}/$maxRetries)")
-                    
-                    // Load peserta dengan pagination (20 per page seperti Data Pendaftar)
+
                     val response = withContext(Dispatchers.IO) {
                         repository.getPesertaList(authToken, page, 20)
                     }
@@ -150,10 +118,8 @@ class SeleksiBerkasViewModel(
                         val pagination = body.pagination
                         
                         Log.d("SeleksiBerkasViewModel", "Page $page: ${pageData.size} peserta")
-                        
-                        // Convert PendaftarResponse ke Peserta dengan data lengkap
+
                         val pesertaList = pageData.map { pendaftar ->
-                            // Ambil status dari API response atau default ke "belum_direview"
                             val status = pendaftar.statusSeleksiBerkas ?: "belum_direview"
                             val lulusBerkas = status == "lulus"
                             val ditolak = status == "tidak_lulus"
@@ -180,16 +146,14 @@ class SeleksiBerkasViewModel(
                                 tanggalJadwal = pendaftar.tanggalJadwal
                             )
                         }
-                        
-                        // Update pagination info
+
                         val currentPage = pagination?.currentPage ?: page
                         val totalPages = pagination?.lastPage ?: 1
                         val totalItems = pagination?.total ?: 0
                         val hasMore = pagination?.hasMore ?: false
-                        
-                        // Append atau replace list
+
                         if (append) {
-                            _pesertaList.value = _pesertaList.value + pesertaList
+                            _pesertaList.value += pesertaList
                         } else {
                             _pesertaList.value = pesertaList
                         }
@@ -210,46 +174,39 @@ class SeleksiBerkasViewModel(
                         Log.d("SeleksiBerkasViewModel", "   - Peserta belum direview: ${_pesertaList.value.count { !it.lulusBerkas && !it.ditolak }}")
                         
                         success = true
-                        return@repeat // Success, exit retry loop
+                        return@repeat
                     } else {
                         val errorBody = try {
                             response.errorBody()?.string()
-                        } catch (e: IOException) {
+                        } catch (_: IOException) {
                             null
                         }
                         lastError = errorBody ?: "Gagal memuat data. Status: ${response.code()}"
-                        
-                        // Jika HTTP error (4xx/5xx), tidak perlu retry
+
                         if (response.code() in 400..599) {
                             success = false
                             return@repeat
                         }
                     }
                 } catch (e: IOException) {
-                    // Network error - bisa retry
                     lastError = "Tidak dapat terhubung ke server. Pastikan server berjalan."
                     Log.e("SeleksiBerkasViewModel", "Network error saat load peserta (Attempt ${attempt + 1}/$maxRetries)", e)
-                    
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+
                     if (attempt < maxRetries - 1) {
-                        // Exponential backoff: 500ms, 1000ms, 2000ms
                         val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
                         delay(delayMs.toLong())
                     }
                 } catch (e: Exception) {
-                    // Unexpected error
                     lastError = "Terjadi kesalahan: ${e.message ?: "Unknown error"}"
                     Log.e("SeleksiBerkasViewModel", "Error saat load peserta dari database (Attempt ${attempt + 1}/$maxRetries)", e)
-                    
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+
                     if (attempt < maxRetries - 1) {
                         val delayMs = (500 * (1 shl attempt)).coerceAtMost(2000)
                         delay(delayMs.toLong())
                     }
                 }
             }
-            
-            // Jika semua retry gagal, tampilkan error
+
             if (!success && lastError != null) {
                 _state.value = _state.value.copy(
                     isLoading = false,
@@ -266,20 +223,14 @@ class SeleksiBerkasViewModel(
             loadPesertaFromDatabase(currentState.currentPage + 1, append = false)
         }
     }
-    
-    /**
-     * Update status peserta (lulus berkas atau ditolak)
-     * Update local state dan simpan ke database via API
-     */
+
     fun updatePesertaStatus(nama: String, lulusBerkas: Boolean, ditolak: Boolean) {
-        // Tentukan status baru berdasarkan boolean
         val statusBaru = when {
             lulusBerkas -> "lulus"
             ditolak -> "tidak_lulus"
             else -> "belum_direview"
         }
-        
-        // Update local state untuk immediate UI update
+
         _pesertaList.update { listSaatIni ->
             listSaatIni.map { pesertaLama: Peserta ->
                 if (pesertaLama.nama == nama) {
@@ -293,21 +244,17 @@ class SeleksiBerkasViewModel(
                 }
             }
         }
-        
-        // Simpan ke database via API
+
         val peserta = _pesertaList.value.find { it.nama == nama }
         if (authToken.isNotBlank() && peserta?.id != null) {
-            saveStatusToDatabase(peserta.id!!, lulusBerkas)
+            saveStatusToDatabase(peserta.id, lulusBerkas)
         } else {
             Log.w("SeleksiBerkasViewModel", "Tidak bisa simpan status ke database: authToken=${authToken.isNotBlank()}, pesertaId=${peserta?.id}")
         }
         
         Log.d("SeleksiBerkasViewModel", "Status peserta '$nama' diupdate: status=$statusBaru, lulusBerkas=$lulusBerkas, ditolak=$ditolak")
     }
-    
-    /**
-     * Simpan status seleksi berkas ke database
-     */
+
     private fun saveStatusToDatabase(pesertaId: Int, lulusBerkas: Boolean) {
         viewModelScope.launch {
             try {
@@ -323,7 +270,6 @@ class SeleksiBerkasViewModel(
                 if (response.isSuccessful) {
                     val body = response.body()
                     Log.d("SeleksiBerkasViewModel", "✅ Status seleksi berkas berhasil disimpan: ${body?.message}")
-                    // Tidak perlu refresh, karena UI sudah diupdate di updatePesertaStatus
                 } else {
                     Log.e("SeleksiBerkasViewModel", "❌ Gagal simpan status seleksi berkas: ${response.code()} - ${response.message()}")
                     response.errorBody()?.string()?.let { 
@@ -340,24 +286,15 @@ class SeleksiBerkasViewModel(
             }
         }
     }
-    
-    /**
-     * Check if token is still valid before loading
-     */
+
     private fun isTokenValid(): Boolean {
-        return authToken.isNotBlank() && authToken.length > 10 // Basic validation
+        return authToken.isNotBlank() && authToken.length > 10
     }
-    
-    /**
-     * Refresh data dari database (reset ke page 1)
-     */
+
     fun refresh() {
         loadPesertaFromDatabase(page = 1, append = false)
     }
-    
-    /**
-     * Edit data pendaftar
-     */
+
     fun editPendaftar(token: String?, pesertaBaru: Peserta) {
         if (token == null || pesertaBaru.id == null) {
             _state.update { it.copy(error = "Token atau ID peserta tidak tersedia") }
@@ -368,7 +305,7 @@ class SeleksiBerkasViewModel(
             _state.update { it.copy(isLoading = true, error = null) }
             try {
                 val pendaftarResponse = PendaftarResponse(
-                    id = pesertaBaru.id!!,
+                    id = pesertaBaru.id,
                     nama = pesertaBaru.nama,
                     nim = pesertaBaru.nim,
                     email = pesertaBaru.email,
@@ -397,7 +334,6 @@ class SeleksiBerkasViewModel(
                 }
                 
                 if (response.isSuccessful && response.body() != null) {
-                    // Update local list
                     _pesertaList.update { listSaatIni ->
                         listSaatIni.map { pesertaLama: Peserta ->
                             if (pesertaLama.id == pesertaBaru.id) {
@@ -418,10 +354,7 @@ class SeleksiBerkasViewModel(
             }
         }
     }
-    
-    /**
-     * Delete data pendaftar
-     */
+
     fun deletePendaftar(token: String?, peserta: Peserta) {
         if (token == null || peserta.id == null) {
             _state.update { it.copy(error = "Token atau ID peserta tidak tersedia") }
@@ -432,18 +365,16 @@ class SeleksiBerkasViewModel(
             _state.update { it.copy(isLoading = true, error = null) }
             try {
                 val response = withContext(Dispatchers.IO) {
-                    repository.deletePeserta(token, peserta.id!!)
+                    repository.deletePeserta(token, peserta.id)
                 }
                 
                 if (response.isSuccessful) {
-                    // Remove from local list
                     _pesertaList.update { listSaatIni ->
                         listSaatIni.filterNot { pesertaItem: Peserta ->
                             pesertaItem.id == peserta.id
                         }
                     }
                     Log.d("SeleksiBerkasViewModel", "✅ Peserta berhasil dihapus")
-                    // Update totalItems
                     _state.update { currentState ->
                         currentState.copy(
                             isLoading = false,
@@ -459,16 +390,7 @@ class SeleksiBerkasViewModel(
             }
         }
     }
-    
-    fun clearError() {
-        _state.value = _state.value.copy(error = null)
-    }
 
-    // Add these functions to the SeleksiBerkasViewModel class
-
-    /**
-     * Export data peserta yang lolos seleksi berkas ke CSV
-     */
     @RequiresApi(Build.VERSION_CODES.Q)
     fun exportToCSV(callback: (Boolean, String?, String?) -> Unit) {
         viewModelScope.launch {
@@ -480,7 +402,6 @@ class SeleksiBerkasViewModel(
                     return@launch
                 }
 
-                // Create CSV content
                 val csvHeader = "Nama,NIM,Email,Telepon,Jurusan,Angkatan,Divisi 1,Divisi 2,Alasan 1,Alasan 2\n"
 
                 val csvContent = StringBuilder(csvHeader)
@@ -506,11 +427,9 @@ class SeleksiBerkasViewModel(
                                 esc(peserta.alasan2) + ","
                     )
 
-                    // ✅ KUNCI UTAMA
                     csvContent.append("\n")
                 }
 
-                // Save to file
                 val fileName = "peserta_lulus_${System.currentTimeMillis()}.csv"
 
                 val resolver = context.contentResolver
@@ -542,9 +461,6 @@ class SeleksiBerkasViewModel(
         }
     }
 
-    /**
-     * Export data peserta yang lolos seleksi berkas ke PDF
-     */
     @RequiresApi(Build.VERSION_CODES.Q)
     fun exportToPDF(callback: (Boolean, String?, String?) -> Unit) {
         viewModelScope.launch {
@@ -581,13 +497,13 @@ class SeleksiBerkasViewModel(
                 }
 
                 val borderPaint = Paint().apply {
-                    color = android.graphics.Color.BLACK   // ⬅️ garis hitam
-                    style = Paint.Style.STROKE             // ⬅️ PENTING
+                    color = android.graphics.Color.BLACK
+                    style = Paint.Style.STROKE
                     strokeWidth = 1f
                 }
 
                 val cellBgPaint = Paint().apply {
-                    color = android.graphics.Color.WHITE   // ⬅️ background putih
+                    color = android.graphics.Color.WHITE
                     style = Paint.Style.FILL
                 }
 
@@ -599,14 +515,13 @@ class SeleksiBerkasViewModel(
                     typeface = Typeface.create("serif", Typeface.BOLD)
                 }
 
-                val linePaint = Paint().apply {
-                    color = android.graphics.Color.GRAY   // garis abu-abu
+                Paint().apply {
+                    color = android.graphics.Color.GRAY
                     strokeWidth = 1f
                 }
 
                 var y = 50f
 
-                // ===== JUDUL =====
                 canvas.drawText(
                     "Daftar Peserta Lulus Seleksi Berkas",
                     pageInfo.pageWidth / 2f,
@@ -615,16 +530,15 @@ class SeleksiBerkasViewModel(
                 )
                 y += 40f
 
-                // ===== FORMAT TABEL (SAMA DENGAN CSV) =====
                 val startX = 30f
                 val colWidths = floatArrayOf(
-                    80f,  // Nama
-                    60f,  // NIM
-                    110f, // Email
-                    70f,  // Telepon
-                    80f,  // Jurusan
-                    50f,  // Angkatan
-                    80f   //status
+                    80f,
+                    60f,
+                    110f,
+                    70f,
+                    80f,
+                    50f,
+                    80f
                 )
 
                 val headers = listOf(
@@ -644,7 +558,6 @@ class SeleksiBerkasViewModel(
 
                     values.forEachIndexed { i, value ->
 
-                        // Background putih
                         canvas.drawRect(
                             x,
                             yPos - rowHeight,
@@ -653,7 +566,6 @@ class SeleksiBerkasViewModel(
                             cellBgPaint
                         )
 
-                        // Border hitam
                         canvas.drawRect(
                             x,
                             yPos - rowHeight,
@@ -662,7 +574,6 @@ class SeleksiBerkasViewModel(
                             borderPaint
                         )
 
-                        // Text
                         canvas.drawText(
                             value,
                             x + 4f,
@@ -674,13 +585,10 @@ class SeleksiBerkasViewModel(
                     }
                 }
 
-
-                // Header
                 drawRow(headers, y, isHeader = true)
                 y += rowHeight
 
-                // Data (1 record = 1 baris)
-                data.forEachIndexed { index, p ->
+                data.forEachIndexed { _, p ->
                     if (y > pageHeight - 40) {
                         document.finishPage(page)
                         page = document.startPage(pageInfo)

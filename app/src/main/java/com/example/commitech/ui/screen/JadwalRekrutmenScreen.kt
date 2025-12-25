@@ -12,10 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,7 +72,7 @@ fun JadwalRekrutmenScreen(
             generateSequence(start) { d -> if (d < end) d.plusDays(1) else null }
                 .plus(end)
                 .toList()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -93,7 +93,7 @@ fun JadwalRekrutmenScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali",
                             tint = colorScheme.onBackground
                         )
@@ -141,10 +141,10 @@ fun JadwalRekrutmenScreen(
                                 contentColor = colorScheme.primary
                             )
                         ) {
-                            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Bulan sebelumnya")
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Bulan sebelumnya")
                         }
                         Text(
-                            text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale("id"))} ${currentMonth.year}",
+                            text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("id"))} ${currentMonth.year}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = colorScheme.onSurface
@@ -155,7 +155,7 @@ fun JadwalRekrutmenScreen(
                                 contentColor = colorScheme.primary
                             )
                         ) {
-                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Bulan berikutnya")
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Bulan berikutnya")
                         }
                     }
 

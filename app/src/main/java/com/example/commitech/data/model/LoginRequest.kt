@@ -1,13 +1,5 @@
 package com.example.commitech.data.model
 
-/**
- * Login Request - Include device info untuk multi-device tracking
- * 
- * INSTAGRAM-STYLE:
- * - Send device info saat login
- * - Server store device info di sessions table
- * - Support multi-device tracking
- */
 data class LoginRequest(
     val email: String,
     val password: String,

@@ -621,7 +621,7 @@ fun SettingsClickableItem(
 
 @Composable
 fun LogoutButton(onClick: () -> Unit) {
-    val colorScheme = MaterialTheme.colorScheme
+    MaterialTheme.colorScheme
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     

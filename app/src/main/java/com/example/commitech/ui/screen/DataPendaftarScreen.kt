@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -104,15 +103,13 @@ fun DataPendaftarScreen(
         }
     }
 
-    var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var filePickerError by remember { mutableStateOf<String?>(null) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         filePickerError = null
-        uri?.let {
-            selectedFileUri = it
+        uri?.let { it ->
             try {
                 val inputStream = context.contentResolver.openInputStream(it)
                     ?: throw Exception("Tidak dapat membaca file. Pastikan file Excel valid.")
@@ -133,7 +130,7 @@ fun DataPendaftarScreen(
                             }
                         }
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                 }
 
                 if (!fileName.endsWith(".xlsx", ignoreCase = true) && 
@@ -163,7 +160,7 @@ fun DataPendaftarScreen(
     fun launchFilePicker() {
         try {
             filePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             filePickerLauncher.launch("*/*")
         }
     }
@@ -483,9 +480,7 @@ fun DataPendaftarScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 itemsIndexed(pendaftarState) { index, pendaftar ->
-                    val actualIndex = ((state.currentPage - 1) * 20) + index + 1
                     PendaftarItem(
-                        index = actualIndex,
                         pendaftar = pendaftar,
                         onDelete = { pendaftarToDelete ->
                             viewModel.deletePendaftar(authState.token, pendaftarToDelete)
@@ -611,7 +606,6 @@ fun DataPendaftarScreen(
 
 @Composable
 fun PendaftarItem(
-    index: Int,
     pendaftar: Pendaftar,
     onDelete: (Pendaftar) -> Unit
 ) {
@@ -870,35 +864,11 @@ fun DetailRowPendaftar(
 }
 
 @Composable
-fun DetailRowWithCheck(label: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color(0xFF1A1A40)
-        )
-        Icon(
-            imageVector = Icons.Default.CheckCircle,
-            contentDescription = "Completed",
-            tint = Color(0xFF4CAF50),
-            modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-@Composable
 fun DetailRowWithLink(
     label: String,
     link: String?
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
     Row(

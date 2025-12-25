@@ -72,10 +72,6 @@ fun MainScreen(
                         onIsiJadwalClick = onIsiJadwalClick,
                         onSeleksiWawancaraClick = onSeleksiWawancaraClick,
                         onKelulusanClick = onKelulusanClick,
-                        onAboutUsClick = {
-                            selectedTab = 1
-                            bottomNavController.navigate("about")
-                        },
                         onSettingsClick = onSettingsClick
                     )
                 }
@@ -83,12 +79,6 @@ fun MainScreen(
                 composable("about") {
                     AboutUsScreen(
                         onBackClick = {
-                            selectedTab = 0
-                            bottomNavController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
-                        },
-                        onHomeClick = {
                             selectedTab = 0
                             bottomNavController.navigate("home") {
                                 popUpTo("home") { inclusive = true }

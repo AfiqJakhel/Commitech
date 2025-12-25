@@ -1,5 +1,7 @@
 package com.example.commitech.ui.navigation
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -14,12 +16,10 @@ import com.example.commitech.ui.screen.*
 import com.example.commitech.ui.screen.UbahJadwalScreen
 import com.example.commitech.ui.viewmodel.*
 
-// Animation constants - Modern Web Style
 private const val ANIMATION_DURATION = 400
 private const val ANIMATION_DURATION_FAST = 300
 private const val ANIMATION_DURATION_SLOW = 500
 
-// 🌊 Modern Web Style: Smooth Slide with Parallax Effect
 private fun powerPointPushEnter() = slideInHorizontally(
     initialOffsetX = { it },
     animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
@@ -60,7 +60,6 @@ private fun powerPointPushPopExit() = slideOutHorizontally(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 )
 
-// ✨ Modern Web Style: Elegant Zoom with Bounce
 private fun powerPointZoomEnter() = scaleIn(
     initialScale = 0.88f,
     animationSpec = tween(ANIMATION_DURATION_SLOW, easing = androidx.compose.animation.core.CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f))
@@ -75,7 +74,6 @@ private fun powerPointZoomExit() = scaleOut(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.FastOutLinearInEasing)
 )
 
-// 🎭 Modern Web Style: Smooth Fade with Subtle Scale
 private fun powerPointFadeEnter() = fadeIn(
     animationSpec = tween(ANIMATION_DURATION, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f))
 ) + scaleIn(
@@ -90,6 +88,7 @@ private fun powerPointFadeExit() = fadeOut(
     animationSpec = tween(ANIMATION_DURATION_FAST, easing = androidx.compose.animation.core.CubicBezierEasing(0.4f, 0.0f, 1.0f, 1.0f))
 )
 
+@RequiresApi(Build.VERSION_CODES.Q)
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AppNavGraph(
@@ -97,7 +96,6 @@ fun AppNavGraph(
 ) {
     val navController = rememberNavController()
 
-    // Shared ViewModels untuk sinkronisasi data
     val authViewModel: AuthViewModel = viewModel()
     val dataPendaftarViewModel: DataPendaftarViewModel = viewModel()
     val seleksiWawancaraViewModel: SeleksiWawancaraViewModel = viewModel()
@@ -109,7 +107,6 @@ fun AppNavGraph(
         startDestination = "splash"
     ) {
 
-        // 🌀 Splash Screen
         composable(
             route = "splash",
             enterTransition = { powerPointFadeEnter() },
@@ -130,7 +127,6 @@ fun AppNavGraph(
             )
         }
 
-        // 🏠 Landing Screen
         composable(
             route = "landing",
             enterTransition = { powerPointZoomEnter() },
@@ -142,7 +138,6 @@ fun AppNavGraph(
             )
         }
 
-        // 🔐 Login
         composable(
             route = "login",
             enterTransition = { powerPointPushEnter() },
@@ -163,7 +158,6 @@ fun AppNavGraph(
             )
         }
 
-        // 📝 Register
         composable(
             route = "register",
             enterTransition = { powerPointPushEnter() },
@@ -179,7 +173,6 @@ fun AppNavGraph(
             )
         }
 
-        // 🏡 Main (Home + About Us with shared bottom nav)
         composable(
             route = "home",
             enterTransition = { powerPointZoomEnter() },
@@ -199,7 +192,6 @@ fun AppNavGraph(
             )
         }
 
-        // ⚙️ Settings (menggunakan shared ViewModel)
         composable(
             route = "settings",
             enterTransition = { powerPointPushEnter() },
@@ -220,7 +212,6 @@ fun AppNavGraph(
             )
         }
 
-        // 📄 Data Pendaftar
         composable(
             route = "dataPendaftar",
             enterTransition = { powerPointPushEnter() },
@@ -236,7 +227,6 @@ fun AppNavGraph(
             )
         }
 
-        // 📋 Seleksi Berkas
         composable(
             route = "seleksiBerkas",
             enterTransition = { powerPointPushEnter() },
@@ -250,7 +240,6 @@ fun AppNavGraph(
             )
         }
 
-        // 💬 Seleksi Wawancara (menggunakan shared ViewModel)
         composable(
             route = "seleksiWawancara",
             enterTransition = { powerPointPushEnter() },
@@ -260,14 +249,12 @@ fun AppNavGraph(
         ) {
             SeleksiWawancaraScreen(
                 viewModel = seleksiWawancaraViewModel,
-                authViewModel = authViewModel,  // Tambahkan authViewModel untuk token API call (Fitur 16)
+                authViewModel = authViewModel,
                 onBackClick = { navController.popBackStack() },
                 navController = navController,
                 jadwalViewModel = jadwalViewModel
             )
         }
-
-        // 📋 Detail Jadwal Wawancara
         composable(
             route = "detailJadwalWawancara/{jadwalId}",
             arguments = listOf(navArgument("jadwalId") { type = NavType.IntType }),
@@ -292,7 +279,6 @@ fun AppNavGraph(
             )
         }
 
-        // 📢 Pengumuman Kelulusan (menggunakan shared ViewModel)
         composable(
             route = "pengumumanKelulusan",
             enterTransition = { powerPointPushEnter() },
@@ -308,7 +294,6 @@ fun AppNavGraph(
             )
         }
 
-        // ✏️ Ubah Detail Peserta (menggunakan shared ViewModel)
         composable(
             route = "ubahDetail/{namaPeserta}",
             arguments = listOf(navArgument("namaPeserta") { type = NavType.StringType }),
@@ -328,7 +313,6 @@ fun AppNavGraph(
             )
         }
 
-        // 🔔 Notifikasi (menggunakan shared ViewModel)
         composable(
             route = "notifikasi",
             enterTransition = { powerPointPushEnter() },
@@ -339,12 +323,10 @@ fun AppNavGraph(
             NotifikasiScreen(navController = navController, viewModel = jadwalViewModel)
         }
 
-        // 📅 Graph Jadwal Rekrutmen
         navigation(
             startDestination = "jadwalRekrutmen",
             route = "jadwal_graph"
         ) {
-            // ✅ Shared ViewModel untuk semua halaman jadwal
             composable(
                 route = "jadwalRekrutmen",
                 enterTransition = { powerPointPushEnter() },

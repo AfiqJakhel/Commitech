@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,8 +73,7 @@ data class Developer(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AboutUsScreen(
-    onBackClick: () -> Unit,
-    onHomeClick: () -> Unit = {}
+    onBackClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isVisible by remember { mutableStateOf(false) }
@@ -252,7 +251,7 @@ fun AboutUsScreen(
                             .padding(vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 16.dp),
                             color = colorScheme.onSurface.copy(alpha = 0.2f)
                         )

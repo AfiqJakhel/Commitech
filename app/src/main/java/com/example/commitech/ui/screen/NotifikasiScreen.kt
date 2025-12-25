@@ -90,7 +90,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                     )
                     else -> null
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
 
                 NotificationItem(
                     id = jadwal.id,

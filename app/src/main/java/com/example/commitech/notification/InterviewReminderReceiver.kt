@@ -1,11 +1,14 @@
 package com.example.commitech.notification
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.RequiresPermission
 
 class InterviewReminderReceiver : BroadcastReceiver() {
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override fun onReceive(context: Context, intent: Intent) {
         val participantName = intent.getStringExtra(EXTRA_PARTICIPANT_NAME) ?: return
         val scheduleLabel = intent.getStringExtra(EXTRA_SCHEDULE_LABEL) ?: ""
@@ -14,15 +17,14 @@ class InterviewReminderReceiver : BroadcastReceiver() {
         InterviewNotificationHelper.ensureChannels(context)
         
         if (!pewawancara.isNullOrEmpty()) {
-            // Ini adalah reminder jadwal rekrutmen
             InterviewNotificationHelper.showJadwalReminderNotification(
                 context = context,
-                judulJadwal = participantName, // participantName digunakan sebagai judul jadwal
+                judulJadwal = participantName,
                 scheduleLabel = scheduleLabel,
                 pewawancara = pewawancara
             )
         } else {
-            // Ini adalah reminder wawancara biasa (per peserta)
+
             InterviewNotificationHelper.showReminderNotification(
                 context = context,
                 participantName = participantName,

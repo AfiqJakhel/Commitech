@@ -50,7 +50,6 @@ fun HomeScreen(
     onIsiJadwalClick: () -> Unit,
     onSeleksiWawancaraClick: () -> Unit,
     onKelulusanClick: () -> Unit,
-    onAboutUsClick: () -> Unit,
     onSettingsClick: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -84,7 +83,7 @@ fun HomeScreen(
             val jadwalDate = LocalDate.parse(jadwal.tanggalMulai, dateFormatter)
             val daysBetween = ChronoUnit.DAYS.between(today, jadwalDate)
             daysBetween in 0..30 
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

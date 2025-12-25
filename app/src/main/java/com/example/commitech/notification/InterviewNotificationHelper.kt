@@ -1,9 +1,11 @@
 package com.example.commitech.notification
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.commitech.R
@@ -12,8 +14,7 @@ object InterviewNotificationHelper {
 
     const val REMINDER_CHANNEL_ID = "interview_reminder_channel"
     const val WARNING_CHANNEL_ID = "interview_warning_channel"
-    
-    // Intent extras untuk deep linking dari notifikasi
+
     const val EXTRA_PARTICIPANT_NAME = "extra_participant_name"
     const val EXTRA_SCHEDULE_LABEL = "extra_schedule_label"
     const val EXTRA_NOTIFICATION_TYPE = "extra_notification_type"
@@ -44,6 +45,7 @@ object InterviewNotificationHelper {
         notificationManager.createNotificationChannel(warningChannel)
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showReminderNotification(
         context: Context,
         participantName: String,
@@ -68,6 +70,7 @@ object InterviewNotificationHelper {
         )
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showJadwalReminderNotification(
         context: Context,
         judulJadwal: String,
@@ -87,6 +90,7 @@ object InterviewNotificationHelper {
         )
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showJadwalUrgentNotification(
         context: Context,
         judulJadwal: String,
@@ -112,6 +116,7 @@ object InterviewNotificationHelper {
         )
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showWarningNotification(
         context: Context,
         participantName: String,
@@ -135,27 +140,5 @@ object InterviewNotificationHelper {
         )
     }
 
-    fun showCompletionNotification(
-        context: Context,
-        participantName: String,
-        scheduleLabel: String
-    ) {
-        val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_done)
-            .setContentTitle(context.getString(R.string.notification_complete_title, participantName))
-            .setContentText(
-                context.getString(
-                    R.string.notification_complete_body,
-                    scheduleLabel
-                )
-            )
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-
-        NotificationManagerCompat.from(context).notify(
-            ("done-$participantName-$scheduleLabel").hashCode(),
-            builder.build()
-        )
-    }
 }
 

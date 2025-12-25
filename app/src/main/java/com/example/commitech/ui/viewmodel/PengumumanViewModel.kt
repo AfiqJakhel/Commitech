@@ -6,9 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.commitech.data.model.HasilWawancaraRequest
 import com.example.commitech.data.repository.HasilWawancaraRepository
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 enum class InterviewStatus {
     PENDING,
@@ -30,7 +27,6 @@ data class DivisiData(
 
 class PengumumanViewModel : ViewModel() {
 
-    // Divisi template yang sudah ada
     private val _daftarDivisi = mutableStateListOf(
         DivisiData("Acara", "Ihsan", mutableStateListOf()),
         DivisiData("Humas", "Anisa", mutableStateListOf()),
@@ -41,16 +37,6 @@ class PengumumanViewModel : ViewModel() {
     val daftarDivisi: List<DivisiData> get() = _daftarDivisi
     
     private val hasilWawancaraRepository = HasilWawancaraRepository()
-    
-    private val _isLoadingFromDatabase = MutableStateFlow(false)
-    val isLoadingFromDatabase: StateFlow<Boolean> = _isLoadingFromDatabase.asStateFlow()
-    
-    private val _loadError = MutableStateFlow<String?>(null)
-    val loadError: StateFlow<String?> = _loadError.asStateFlow()
-
-    fun getKoordinator(divisi: String): String {
-        return _daftarDivisi.find { it.namaDivisi == divisi }?.koordinator ?: "-"
-    }
 
     fun getAllParticipants(): List<ParticipantInfo> {
         return _daftarDivisi.flatMap { it.pesertaLulus }
@@ -58,72 +44,12 @@ class PengumumanViewModel : ViewModel() {
 
     fun getAllDivisiNames(): List<String> = _daftarDivisi.map { it.namaDivisi }
 
-    /**
-     * Load data peserta lulus langsung dari database (hasil_wawancara)
-     * Ini lebih reliable daripada sync dari SeleksiWawancaraViewModel
-     */
-    fun loadPesertaLulusFromDatabase(token: String?) {
-        if (token == null) {
-            _loadError.value = "Token tidak tersedia. Silakan login ulang."
-            return
-        }
-        
-        viewModelScope.launch {
-            _isLoadingFromDatabase.value = true
-            _loadError.value = null
-            
-            try {
-                val response = hasilWawancaraRepository.getHasilWawancara(token)
-                
-                if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
-                    if (body.sukses && body.data != null) {
-                        // Hapus semua peserta yang ada
-                        _daftarDivisi.forEach { it.pesertaLulus.clear() }
-                        
-                        // Filter hanya peserta yang diterima dengan divisi
-                        val acceptedResults = body.data.filter { 
-                            it.status == "diterima" && !it.divisi.isNullOrBlank()
-                        }
-                        
-                        // Tambahkan ke divisi yang sesuai
-                        acceptedResults.forEach { hasil ->
-                            val targetDivisi = _daftarDivisi.find { it.namaDivisi == hasil.divisi }
-                            targetDivisi?.pesertaLulus?.add(
-                                ParticipantInfo(
-                                    name = hasil.namaPeserta,
-                                    status = InterviewStatus.ACCEPTED,
-                                    division = hasil.divisi ?: ""
-                                )
-                            )
-                        }
-                        
-                        _isLoadingFromDatabase.value = false
-                    } else {
-                        _loadError.value = body.pesan ?: "Gagal memuat data"
-                        _isLoadingFromDatabase.value = false
-                    }
-                } else {
-                    _loadError.value = "Gagal memuat data dari database. Status: ${response.code()}"
-                    _isLoadingFromDatabase.value = false
-                }
-            } catch (e: Exception) {
-                _loadError.value = "Error: ${e.message}"
-                _isLoadingFromDatabase.value = false
-            }
-        }
-    }
-    
-    // Sinkronisasi data dari SeleksiWawancaraViewModel (untuk backward compatibility)
     fun syncFromSeleksiWawancara(seleksiViewModel: SeleksiWawancaraViewModel) {
-        // Hapus semua peserta yang ada
         _daftarDivisi.forEach { it.pesertaLulus.clear() }
-        
-        // Ambil peserta yang diterima dari seleksi wawancara
+
         val acceptedParticipants = seleksiViewModel.getAllParticipants()
             .filter { it.status == InterviewStatus.ACCEPTED && it.division.isNotBlank() }
-        
-        // Tambahkan ke divisi yang sesuai
+
         acceptedParticipants.forEach { participant ->
             val targetDivisi = _daftarDivisi.find { it.namaDivisi == participant.division }
             targetDivisi?.pesertaLulus?.add(
@@ -151,21 +77,17 @@ class PengumumanViewModel : ViewModel() {
         onSuccess: (() -> Unit)? = null,
         onError: ((String) -> Unit)? = null
     ) {
-        // Cari peserta di SeleksiWawancaraViewModel untuk mendapatkan pesertaId
         val participant = seleksiViewModel.getAllParticipants().find { it.name == name }
         if (participant?.pesertaId == null) {
             onError?.invoke("Peserta tidak ditemukan atau pesertaId tidak tersedia")
             return
         }
         
-        val pesertaId = participant.pesertaId!!
-        
-        // Jika token tersedia, update ke backend terlebih dahulu
+        val pesertaId = participant.pesertaId
+
         if (token != null) {
-            // Cari hasil wawancara yang sudah ada untuk mendapatkan hasilWawancaraId
             val hasilWawancara = seleksiViewModel.getHasilWawancaraByPesertaId(pesertaId)
             if (hasilWawancara != null) {
-                // Update ke backend
                 viewModelScope.launch {
                     try {
                         val request = HasilWawancaraRequest(
@@ -188,10 +110,8 @@ class PengumumanViewModel : ViewModel() {
                         if (response.isSuccessful && response.body() != null) {
                             val responseBody = response.body()!!
                             if (responseBody.sukses && responseBody.data != null) {
-                                // Refresh data dari database untuk memastikan sinkronisasi
                                 seleksiViewModel.loadHasilWawancaraAndUpdateStatus(token)
-                                
-                                // Update local state setelah berhasil update ke backend
+
                                 updateLocalState(name, divisi, status, seleksiViewModel)
                                 onSuccess?.invoke()
                             } else {
@@ -206,11 +126,9 @@ class PengumumanViewModel : ViewModel() {
                     }
                 }
             } else {
-                // Jika belum ada hasil wawancara, buat baru
                 onError?.invoke("Hasil wawancara untuk peserta ini belum ada. Silakan terima peserta terlebih dahulu.")
             }
         } else {
-            // Jika token tidak tersedia, hanya update local state
             updateLocalState(name, divisi, status, seleksiViewModel)
             onSuccess?.invoke()
         }
@@ -222,50 +140,26 @@ class PengumumanViewModel : ViewModel() {
         status: InterviewStatus,
         seleksiViewModel: SeleksiWawancaraViewModel
     ) {
-        // Update di SeleksiWawancaraViewModel terlebih dahulu
         seleksiViewModel.updateParticipantByName(name, status, divisi)
-        
-        // Jika ditolak, hapus dari semua divisi
+
         if (status == InterviewStatus.REJECTED) {
             rejectParticipantByName(name)
             return
         }
-        
-        // Hapus dari divisi lama
+
         val oldParticipant = getAllParticipants().find { it.name == name }
         if (oldParticipant != null) {
             rejectParticipantByName(name)
         }
-        
-        // Tambahkan ke divisi baru
+
         val targetDivisi = _daftarDivisi.find { it.namaDivisi == divisi }
-        if (targetDivisi != null) {
-            targetDivisi.pesertaLulus.add(
-                ParticipantInfo(
-                    name = name,
-                    status = status,
-                    division = divisi
-                )
+        targetDivisi?.pesertaLulus?.add(
+            ParticipantInfo(
+                name = name,
+                status = status,
+                division = divisi
             )
-        }
-    }
-
-    fun moveParticipantToDivision(name: String, newDivision: String) {
-        // Hapus peserta dari divisi lama
-        val peserta = getAllParticipants().find { it.name == name } ?: return
-        rejectParticipantByName(name)
-
-        // Tambahkan ke divisi baru
-        val targetDivisi = _daftarDivisi.find { it.namaDivisi == newDivision }
-        if (targetDivisi != null) {
-            targetDivisi.pesertaLulus.add(
-                ParticipantInfo(
-                    name = name,
-                    status = InterviewStatus.ACCEPTED,
-                    division = newDivision
-                )
-            )
-        }
+        )
     }
 
 }

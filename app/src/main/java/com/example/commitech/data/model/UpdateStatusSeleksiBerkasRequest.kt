@@ -4,6 +4,6 @@ import com.google.gson.annotations.SerializedName
 
 data class UpdateStatusSeleksiBerkasRequest(
     @SerializedName("status")
-    val status: String // "lulus" atau "tidak_lulus"
+    val status: String
 )
 

@@ -1,5 +1,7 @@
 package com.example.commitech.ui.screen
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -10,45 +12,69 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import androidx.navigation.NavController
-import com.example.commitech.ui.viewmodel.InterviewStatus
-import com.example.commitech.ui.viewmodel.PengumumanViewModel
-import com.example.commitech.ui.viewmodel.ParticipantInfo
-import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
-import com.example.commitech.ui.viewmodel.AuthViewModel
 import com.example.commitech.ui.viewmodel.AuthState
-import com.example.commitech.data.model.HasilWawancaraResponse
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
+import com.example.commitech.ui.viewmodel.AuthViewModel
+import com.example.commitech.ui.viewmodel.InterviewStatus
+import com.example.commitech.ui.viewmodel.ParticipantInfo
+import com.example.commitech.ui.viewmodel.PengumumanViewModel
+import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
 import com.example.commitech.utils.PdfGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,9 +88,6 @@ fun PengumumanScreen(
     var showPilihan by remember { mutableStateOf(false) }
     var selectedPeserta by remember { mutableStateOf<ParticipantInfo?>(null) }
 
-
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-
     val authState by authViewModel?.authState?.collectAsState() ?: remember {
         mutableStateOf(AuthState())
     }
@@ -76,7 +99,7 @@ fun PengumumanScreen(
 
     LaunchedEffect(Unit) {
         authToken?.let { token ->
-            seleksiViewModel.loadHasilWawancaraAndUpdateStatus(token, forceReload = true)
+            seleksiViewModel.loadHasilWawancaraAndUpdateStatus(token)
         }
     }
 
@@ -116,7 +139,6 @@ fun PengumumanScreen(
                 )
             }
         }
-        refreshTrigger++
     }
 
     val daftarDivisi = viewModel.daftarDivisi
@@ -386,7 +408,7 @@ fun PengumumanScreen(
                                     ) {
                                         Surface(
                                             shape = RoundedCornerShape(12.dp),
-                                            color = if (divisi.pesertaLulus.size > 0)
+                                            color = if (divisi.pesertaLulus.isNotEmpty())
                                                 Color(0xFF4CAF50).copy(alpha = 0.1f)
                                             else Color(0xFFBDBDBD).copy(alpha = 0.1f)
                                         ) {
@@ -394,7 +416,7 @@ fun PengumumanScreen(
                                                 "${divisi.pesertaLulus.size} peserta",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = if (divisi.pesertaLulus.size > 0)
+                                                color = if (divisi.pesertaLulus.isNotEmpty())
                                                     Color(0xFF4CAF50)
                                                 else Color(0xFF757575),
                                                 modifier = Modifier.padding(

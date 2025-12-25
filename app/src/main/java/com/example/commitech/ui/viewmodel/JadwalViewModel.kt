@@ -11,14 +11,9 @@ import com.example.commitech.data.model.JadwalRekrutmenItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-// Import untuk Peserta
-import com.example.commitech.ui.viewmodel.Peserta
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.time.delay
 
 data class Jadwal(
     val id: Int,
@@ -39,38 +34,17 @@ class JadwalViewModel : ViewModel() {
 
     private val _daftarJadwal = mutableStateListOf<Jadwal>()
     val daftarJadwal: List<Jadwal> get() = _daftarJadwal
-    
-    // State untuk menyimpan peserta yang dipilih per jadwal
-    // Key: jadwalId, Value: List<Peserta>
+
     private val _pesertaPerJadwal = mutableMapOf<Int, MutableList<Peserta>>()
     val pesertaPerJadwal: Map<Int, List<Peserta>> get() = _pesertaPerJadwal
-    
-    // StateFlow untuk trigger recomposition ketika pesertaPerJadwal berubah
+
     private val _pesertaPerJadwalUpdateTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
     val pesertaPerJadwalUpdateTrigger: kotlinx.coroutines.flow.StateFlow<Int> = _pesertaPerJadwalUpdateTrigger.asStateFlow()
     
     fun getPesertaByJadwalId(jadwalId: Int): List<Peserta> {
-        // Return snapshot copy agar Compose selalu melihat perubahan (add/remove)
-        // meskipun underlying storage menggunakan MutableList biasa.
         return (_pesertaPerJadwal[jadwalId] ?: emptyList()).toList()
     }
-    
-    /**
-     * Mendapatkan semua peserta yang sudah ada di jadwal manapun (kecuali jadwal tertentu)
-     * Digunakan untuk filter peserta yang sudah terdaftar di jadwal lain
-     */
-    fun getAllPesertaDiJadwalLain(kecualiJadwalId: Int): Set<Int> {
-        return _pesertaPerJadwal
-            .filterKeys { it != kecualiJadwalId }
-            .values
-            .flatten()
-            .mapNotNull { it.id }
-            .toSet()
-    }
-    
-    /**
-     * Mendapatkan semua peserta yang sudah ada di jadwal manapun berdasarkan nama
-     */
+
     fun getAllPesertaNamaDiJadwalLain(kecualiJadwalId: Int): Set<String> {
         return _pesertaPerJadwal
             .filterKeys { it != kecualiJadwalId }
@@ -78,35 +52,6 @@ class JadwalViewModel : ViewModel() {
             .flatten()
             .map { it.nama }
             .toSet()
-    }
-    
-    fun tambahPesertaKeJadwal(jadwalId: Int, peserta: Peserta) {
-        val currentList = _pesertaPerJadwal.getOrPut(jadwalId) { mutableListOf() }
-        // Cek apakah peserta sudah ada
-        if (!currentList.any { it.nama == peserta.nama }) {
-            // Cek maksimal 5 peserta
-            if (currentList.size < 5) {
-                currentList.add(peserta)
-                // Trigger recomposition
-                _pesertaPerJadwalUpdateTrigger.value++
-            }
-        }
-    }
-    
-    fun hapusPesertaDariJadwal(jadwalId: Int, namaPeserta: String) {
-        val peserta = _pesertaPerJadwal[jadwalId]?.find { it.nama == namaPeserta }
-        
-        // Hapus dari local state dulu untuk immediate UI update
-        _pesertaPerJadwal[jadwalId]?.removeAll { it.nama == namaPeserta }
-        // Trigger recomposition setelah menghapus
-        _pesertaPerJadwalUpdateTrigger.value++
-        
-        // Hapus dari database juga jika ada ID
-        if (authToken.isNotBlank() && peserta?.id != null) {
-            removePesertaFromJadwal(jadwalId, peserta.id)
-        } else {
-            Log.w("JadwalViewModel", "Tidak bisa hapus peserta dari database: authToken=${authToken.isNotBlank()}, pesertaId=${peserta?.id}")
-        }
     }
 
     fun hapusPesertaDariJadwal(jadwalId: Int, peserta: Peserta) {
@@ -118,10 +63,8 @@ class JadwalViewModel : ViewModel() {
             _pesertaPerJadwal[jadwalId]?.removeAll { it.nama == peserta.nama }
         }
 
-        // Trigger recomposition setelah menghapus
         _pesertaPerJadwalUpdateTrigger.value++
 
-        // Hapus dari database juga jika ada ID
         if (authToken.isNotBlank() && pesertaId != null) {
             removePesertaFromJadwal(jadwalId, pesertaId)
         } else {
@@ -153,86 +96,20 @@ class JadwalViewModel : ViewModel() {
     }
     
     fun setPesertaUntukJadwal(jadwalId: Int, pesertaList: List<Peserta>) {
-        // Maksimal 5 peserta
         val pesertaTerbatas = pesertaList.take(5)
         _pesertaPerJadwal[jadwalId] = pesertaTerbatas.toMutableList()
-        // Trigger recomposition
         _pesertaPerJadwalUpdateTrigger.value++
-        
-        // Simpan ke database via API
+
         if (authToken.isNotBlank() && pesertaTerbatas.isNotEmpty()) {
             savePesertaToJadwal(jadwalId, pesertaTerbatas)
         } else if (pesertaTerbatas.isEmpty()) {
-            // Jika tidak ada peserta yang dipilih, hapus semua peserta dari jadwal di database
-            // (optional: bisa dihapus jika ingin membiarkan peserta lama tetap ada)
             Log.d("JadwalViewModel", "Tidak ada peserta yang dipilih untuk jadwal $jadwalId")
         }
     }
-    
-    /**
-     * Assign peserta ke jadwal menggunakan List<Int> (peserta IDs)
-     * Fungsi ini akan menambahkan peserta yang dipilih ke peserta yang sudah ada di jadwal
-     */
-    fun assignPesertaToJadwal(
-        token: String,
-        jadwalId: Int,
-        pesertaIds: List<Int>,
-        onComplete: () -> Unit = {}
-    ) {
-        authToken = token
-        viewModelScope.launch {
-            try {
-                // Load peserta yang sudah ada di jadwal untuk validasi
-                val currentPesertaResp = withContext(Dispatchers.IO) {
-                    api.getPesertaByJadwal("Bearer $token", jadwalId)
-                }
-                
-                var currentCount = 0
-                if (currentPesertaResp.isSuccessful) {
-                    currentPesertaResp.body()?.data?.let {
-                        currentCount = it.size
-                    }
-                }
-                
-                // Validasi maksimal 5 peserta total (peserta lama + baru)
-                val totalPeserta = currentCount + pesertaIds.size
-                
-                if (totalPeserta > 5) {
-                    Log.e("JadwalViewModel", "Total peserta melebihi batas maksimal 5. Current: $currentCount, New: ${pesertaIds.size}, Total: $totalPeserta")
-                    return@launch
-                }
-                
-                val request = com.example.commitech.data.model.AssignPesertaRequest(pesertaIds)
-                
-                Log.d("JadwalViewModel", "Assigning ${pesertaIds.size} peserta ke jadwal $jadwalId (Current: $currentCount, Total akan: $totalPeserta): $pesertaIds")
-                
-                val resp = withContext(Dispatchers.IO) {
-                    api.assignPesertaToJadwal("Bearer $token", jadwalId, request)
-                }
-                
-                if (resp.isSuccessful) {
-                    val body = resp.body()
-                    Log.d("JadwalViewModel", "✅ Peserta berhasil di-assign ke jadwal: ${body?.pesan}")
-                    
-                    // Refresh peserta dari jadwal setelah berhasil
-                    loadPesertaFromJadwal(jadwalId)
-                    onComplete()
-                } else {
-                    Log.e("JadwalViewModel", "❌ Gagal assign peserta ke jadwal: ${resp.code()} - ${resp.message()}")
-                    resp.errorBody()?.string()?.let { 
-                        Log.e("JadwalViewModel", "Error body: $it") 
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("JadwalViewModel", "❌ Error saat assign peserta ke jadwal", e)
-            }
-        }
-    }
-    
+
     private fun savePesertaToJadwal(jadwalId: Int, pesertaList: List<Peserta>) {
         viewModelScope.launch {
             try {
-                // Filter peserta yang memiliki ID (untuk API call)
                 val pesertaIds = pesertaList.mapNotNull { it.id }
                 val pesertaTanpaId = pesertaList.filter { it.id == null }
                 
@@ -258,8 +135,7 @@ class JadwalViewModel : ViewModel() {
                     val body = resp.body()
                     Log.d("JadwalViewModel", "✅ Peserta berhasil di-assign ke jadwal: ${body?.pesan}")
                     Log.d("JadwalViewModel", "Data: ${body?.data}")
-                    
-                    // Refresh peserta dari database setelah berhasil disimpan
+
                     loadPesertaFromJadwal(jadwalId)
                 } else {
                     Log.e("JadwalViewModel", "❌ Gagal assign peserta ke jadwal: ${resp.code()} - ${resp.message()}")
@@ -289,7 +165,6 @@ class JadwalViewModel : ViewModel() {
                     val body = resp.body()
                     body?.data?.let { pesertaList ->
                         try {
-                            // Convert PendaftarResponse ke Peserta
                             val peserta = pesertaList.mapNotNull { pendaftar ->
                                 try {
                                     Peserta(
@@ -305,11 +180,11 @@ class JadwalViewModel : ViewModel() {
                                         divisi2 = pendaftar.pilihanDivisi2,
                                         alasan2 = pendaftar.alasan2,
                                         krsTerakhir = pendaftar.krsTerakhir,
-                                        formulirPendaftaran = pendaftar.formulirPendaftaran?.toString(),
-                                        suratKomitmen = pendaftar.suratKomitmen?.toString(),
-                                        lulusBerkas = true, // Peserta di jadwal sudah lulus berkas
+                                        formulirPendaftaran = pendaftar.formulirPendaftaran,
+                                        suratKomitmen = pendaftar.suratKomitmen,
+                                        lulusBerkas = true,
                                         ditolak = false,
-                                        statusSeleksiBerkas = "lulus", // Default lulus karena sudah di jadwal
+                                        statusSeleksiBerkas = "lulus",
                                         statusWawancara = pendaftar.statusWawancara ?: "pending",
                                         tanggalJadwal = pendaftar.tanggalJadwal
                                     )
@@ -318,18 +193,15 @@ class JadwalViewModel : ViewModel() {
                                     null
                                 }
                             }
-                            
-                            // Hapus peserta yang sama dari jadwal lain untuk mencegah duplikasi
+
                             val pesertaIds = peserta.mapNotNull { it.id }.toSet()
                             _pesertaPerJadwal.forEach { (otherJadwalId, otherPesertaList) ->
                                 if (otherJadwalId != jadwalId) {
-                                    // Hapus peserta yang memiliki ID yang sama
                                     otherPesertaList.removeAll { it.id in pesertaIds }
                                 }
                             }
                             
                             _pesertaPerJadwal[jadwalId] = peserta.toMutableList()
-                            // Trigger recomposition
                             _pesertaPerJadwalUpdateTrigger.value++
                             Log.d("JadwalViewModel", "Berhasil load ${peserta.size} peserta dari jadwal $jadwalId")
                         } catch (e: Exception) {
@@ -349,22 +221,18 @@ class JadwalViewModel : ViewModel() {
     }
 
     fun setAuthToken(token: String) {
-        // Hanya fetch jika token berubah atau jadwal masih kosong
         val tokenChanged = authToken != token
         authToken = token
-        
-        // Hanya fetch jika token berubah atau daftar jadwal masih kosong
+
         if (tokenChanged || _daftarJadwal.isEmpty()) {
             fetchJadwal()
-            // Load peserta untuk semua jadwal setelah fetch jadwal selesai
             viewModelScope.launch {
-                delay(500) // Tunggu fetchJadwal selesai
+                delay(500)
                 _daftarJadwal.forEach { jadwal ->
                     loadPesertaFromJadwal(jadwal.id)
                 }
             }
         } else {
-            // Jika token tidak berubah tapi peserta belum di-load, load sekarang
             viewModelScope.launch {
                 _daftarJadwal.forEach { jadwal ->
                     if (_pesertaPerJadwal[jadwal.id].isNullOrEmpty()) {
@@ -463,7 +331,6 @@ class JadwalViewModel : ViewModel() {
                 if (resp.isSuccessful) {
                     val body = resp.body()
                     Log.d("JadwalViewModel", "Jadwal berhasil disimpan ke database: ${body?.data}")
-                    // Refresh data dari database untuk mendapatkan ID yang benar
                     fetchJadwal()
                 } else {
                     Log.e("JadwalViewModel", "Gagal menyimpan jadwal: ${resp.code()} - ${resp.message()}")

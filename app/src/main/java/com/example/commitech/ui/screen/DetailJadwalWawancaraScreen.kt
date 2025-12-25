@@ -4,11 +4,23 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -24,32 +36,59 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import com.example.commitech.ui.viewmodel.*
-import com.example.commitech.ui.viewmodel.DetailJadwalWawancaraViewModel
-import com.example.commitech.ui.viewmodel.PesertaWawancaraState
-import com.example.commitech.data.model.HasilWawancaraResponse
 import com.example.commitech.notification.InterviewNotificationHelper
+import com.example.commitech.ui.viewmodel.DetailJadwalWawancaraViewModel
+import com.example.commitech.ui.viewmodel.InterviewStatus
+import com.example.commitech.ui.viewmodel.Jadwal
+import com.example.commitech.ui.viewmodel.JadwalViewModel
+import com.example.commitech.ui.viewmodel.Peserta
+import com.example.commitech.ui.viewmodel.PesertaWawancaraState
+import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
+import com.example.commitech.ui.viewmodel.SeleksiWawancaraViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun DialogPilihPeserta(
@@ -233,7 +272,7 @@ fun DialogPilihWaktu(
     onConfirm: (Int) -> Unit,
     colorScheme: ColorScheme
 ) {
-    var selectedMinutes by remember { mutableStateOf(6) }
+    var selectedMinutes by remember { mutableIntStateOf(6) }
     val timeOptions = listOf(5, 6, 10, 15, 20, 30, 45, 60)
 
     Dialog(onDismissRequest = onDismiss) {
@@ -458,7 +497,7 @@ fun DetailJadwalWawancaraScreen(
 
     val pesertaDiterima by seleksiBerkasViewModel.pesertaList.collectAsState()
 
-    val hasilWawancaraList by seleksiWawancaraViewModel?.hasilWawancaraList?.collectAsState() ?: remember { mutableStateOf(emptyList<HasilWawancaraResponse>()) }
+    val hasilWawancaraList by seleksiWawancaraViewModel?.hasilWawancaraList?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
 
     val pesertaIdDiHasilWawancara = remember(hasilWawancaraList) {
         hasilWawancaraList.map { it.pesertaId }.toSet()
@@ -470,7 +509,6 @@ fun DetailJadwalWawancaraScreen(
         jadwalViewModel.getPesertaByJadwalId(jadwal.id)
     }
 
-    val isSavingHasil by detailViewModel.isSavingHasil.collectAsState()
     val saveHasilError by detailViewModel.saveHasilError.collectAsState()
     val saveHasilSuccess by detailViewModel.saveHasilSuccess.collectAsState()
 
@@ -496,8 +534,6 @@ fun DetailJadwalWawancaraScreen(
         }
     }
 
-    var pesertaToRemove by remember { mutableStateOf<Peserta?>(null) }
-
     LaunchedEffect(saveHasilSuccess) {
         saveHasilSuccess?.let { success ->
             scope.launch {
@@ -505,11 +541,9 @@ fun DetailJadwalWawancaraScreen(
 
                 authToken?.let { token ->
                     delay(300)
-                    seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token, forceReload = true)
+                    seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
                     jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
                 }
-
-                pesertaToRemove = null
             }
         }
     }
@@ -746,9 +780,7 @@ fun DetailJadwalWawancaraScreen(
                         jadwalViewModel = jadwalViewModel,
                         jadwalId = jadwal.id,
                         seleksiWawancaraViewModel = seleksiWawancaraViewModel,
-                        onTerimaTolak = {
-                            pesertaToRemove = peserta
-                        },
+                        onTerimaTolak = { },
                         onHapus = {
                             pesertaToDelete = peserta
                         },
@@ -794,13 +826,12 @@ fun DetailJadwalWawancaraScreen(
                 TextButton(onClick = { pesertaToDelete = null }) {
                     Text("Batal")
                 }
-            },
-            shape = RoundedCornerShape(16.dp)
+            }
         )
     }
 
     if (showDialogPilihPeserta) {
-        LaunchedEffect(showDialogPilihPeserta) {
+        LaunchedEffect(Unit) {
             authToken?.let { token ->
                 seleksiWawancaraViewModel?.loadHasilWawancaraAndUpdateStatus(token)
             }
@@ -819,7 +850,6 @@ fun DetailJadwalWawancaraScreen(
 
                 authToken?.let { token ->
                     jadwalViewModel.setAuthToken(token)
-
                     jadwalViewModel.loadPesertaFromJadwal(jadwal.id)
                 }
                 showDialogPilihPeserta = false
@@ -832,12 +862,12 @@ fun DetailJadwalWawancaraScreen(
 @Composable
 fun PesertaCardWawancara(
     peserta: Peserta,
-    pesertaState: PesertaWawancaraState?,
+    @Suppress("UNUSED_PARAMETER") pesertaState: PesertaWawancaraState?,
     colorScheme: ColorScheme,
     detailViewModel: DetailJadwalWawancaraViewModel,
     authToken: String?,
-    jadwalViewModel: JadwalViewModel,
-    jadwalId: Int,
+    @Suppress("UNUSED_PARAMETER") jadwalViewModel: JadwalViewModel,
+    @Suppress("UNUSED_PARAMETER") jadwalId: Int,
     seleksiWawancaraViewModel: SeleksiWawancaraViewModel? = null,
     onTerimaTolak: () -> Unit = {},
     onHapus: (() -> Unit)? = null,
@@ -958,12 +988,9 @@ fun PesertaCardWawancara(
 
     val minutes = remainingSeconds / 60
     val seconds = remainingSeconds % 60
-    val remainingTime = String.format("%02d:%02d", minutes, seconds)
+    val remainingTime = String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
 
     val isSavingHasil by detailViewModel.isSavingHasil.collectAsState()
-
-    val saveHasilSuccess by detailViewModel.saveHasilSuccess.collectAsState()
-    val saveHasilError by detailViewModel.saveHasilError.collectAsState()
 
     Card(
         modifier = Modifier
@@ -1138,7 +1165,7 @@ fun PesertaCardWawancara(
                             containerColor = colorScheme.primary
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && !isFinalStatus
+                        enabled = !isSavingHasil
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
@@ -1167,7 +1194,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFFD32F2F).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null && !isFinalStatus
+                        enabled = !isSavingHasil && authToken != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbDown,
@@ -1189,7 +1216,7 @@ fun PesertaCardWawancara(
                             disabledContainerColor = Color(0xFF4CAF50).copy(alpha = 0.6f)
                         ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isSavingHasil && authToken != null && !isFinalStatus
+                        enabled = !isSavingHasil && authToken != null
                     ) {
                         Icon(
                             imageVector = Icons.Default.ThumbUp,
@@ -1336,19 +1363,13 @@ private fun triggerWarningVibration(context: android.content.Context) {
 
     vibrator ?: return
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-        val pattern = longArrayOf(0, 400, 120, 400)
-        val amplitudes = intArrayOf(
-            0,
-            VibrationEffect.DEFAULT_AMPLITUDE,
-            0,
-            VibrationEffect.DEFAULT_AMPLITUDE
-        )
-        val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
-        vibrator.vibrate(effect)
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(600L)
-    }
+    val pattern = longArrayOf(0, 400, 120, 400)
+    val amplitudes = intArrayOf(
+        0,
+        VibrationEffect.DEFAULT_AMPLITUDE,
+        0,
+        VibrationEffect.DEFAULT_AMPLITUDE
+    )
+    val effect = VibrationEffect.createWaveform(pattern, amplitudes, -1)
+    vibrator.vibrate(effect)
 }

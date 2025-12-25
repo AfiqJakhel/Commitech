@@ -25,15 +25,7 @@ class DataPendaftarRepository {
     ): Response<PendaftarListResponse> {
         return apiService.getPesertaList("Bearer $token", page, perPage, search)
     }
-    
-    suspend fun getPesertaById(token: String, id: Int): Response<PendaftarSingleResponse> {
-        return apiService.getPesertaById("Bearer $token", id)
-    }
-    
-    suspend fun createPeserta(token: String, pendaftar: PendaftarResponse): Response<PendaftarSingleResponse> {
-        return apiService.createPeserta("Bearer $token", pendaftar)
-    }
-    
+
     suspend fun updatePeserta(token: String, id: Int, pendaftar: PendaftarResponse): Response<PendaftarSingleResponse> {
         return apiService.updatePeserta("Bearer $token", id, pendaftar)
     }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -351,7 +352,7 @@ fun ProfileInfoSection(
                 color = colorScheme.onSurface
             )
             
-            Divider(color = colorScheme.onSurface.copy(alpha = 0.1f))
+            HorizontalDivider(color = colorScheme.onSurface.copy(alpha = 0.1f))
             
             ProfileInfoItem(
                 icon = Icons.Default.Email,
@@ -450,24 +451,24 @@ fun ProfileActionsSection() {
                 color = colorScheme.onSurface
             )
             
-            Divider(color = colorScheme.onSurface.copy(alpha = 0.1f))
+            HorizontalDivider(color = colorScheme.onSurface.copy(alpha = 0.1f))
             
             ActionButton(
                 icon = Icons.Default.Edit,
                 text = "Edit Profile",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
             
             ActionButton(
                 icon = Icons.Default.Lock,
                 text = "Ubah Password",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
             
             ActionButton(
                 icon = Icons.Default.Share,
                 text = "Bagikan Profile",
-                onClick = { /* TODO */ }
+                onClick = {}
             )
         }
     }

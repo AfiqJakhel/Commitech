@@ -7,9 +7,7 @@ import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 import java.lang.reflect.Type
 
-/**
- * Custom deserializer untuk handle integer 0/1 sebagai boolean
- */
+
 class BooleanFromIntDeserializer : JsonDeserializer<Boolean?> {
     override fun deserialize(
         json: JsonElement?,

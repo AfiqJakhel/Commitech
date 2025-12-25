@@ -44,10 +44,6 @@ interface ApiService {
     @GET("api/user")
     suspend fun getUser(@Header("Authorization") token: String): Response<AuthResponse>
     
-    // ==========================================
-    // API Session Management
-    // ==========================================
-    
     @GET("api/session/check")
     suspend fun checkSession(@Header("Authorization") token: String): Response<SessionValidationResponse>
     
@@ -62,10 +58,6 @@ interface ApiService {
     
     @POST("api/session/revoke-others")
     suspend fun revokeOtherSessions(@Header("Authorization") token: String): Response<Unit>
-    
-    // ==========================================
-    // API Peserta/Data Pendaftar
-    // ==========================================
     
     @GET("api/peserta")
     suspend fun getPesertaList(
@@ -128,71 +120,24 @@ interface ApiService {
         @Path("id") id: Int,
         @Body request: UpdateStatusSeleksiBerkasRequest
     ): Response<PendaftarSingleResponse>
-    
-    // ==========================================
-    // API Hasil Wawancara (Modul 4 - Fitur 16-17)
-    // ==========================================
-    
-    /**
-     * Fitur 16: Input hasil wawancara (Create)
-     * 
-     * Endpoint: POST /api/wawancara/hasil
-     * 
-     * Menyimpan hasil wawancara untuk seorang peserta.
-     * 
-     * @param token Token autentikasi (dengan prefix "Bearer")
-     * @param request Request body berisi data hasil wawancara
-     * @return Response yang berisi data hasil wawancara yang baru dibuat
-     * 
-     * Status Code:
-     * - 201: Created - Hasil wawancara berhasil disimpan
-     * - 400: Bad Request - Hasil wawancara untuk peserta ini sudah ada
-     * - 422: Unprocessable Entity - Validation error
-     * - 401: Unauthorized - Token invalid/expired
-     */
+
     @POST("api/wawancara/hasil")
     suspend fun simpanHasilWawancara(
         @Header("Authorization") token: String,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
-    
-    /**
-     * Get semua hasil wawancara
-     * Endpoint: GET /api/wawancara/hasil
-     */
+
     @GET("api/wawancara/hasil")
     suspend fun getHasilWawancara(
         @Header("Authorization") token: String
     ): Response<HasilWawancaraListResponse>
-    
-    /**
-     * Fitur 17: Ubah hasil wawancara (Update)
-     * 
-     * Endpoint: PUT /api/wawancara/hasil/{id}
-     * 
-     * Mengubah hasil wawancara yang sudah ada.
-     * 
-     * @param token Token autentikasi (dengan prefix "Bearer")
-     * @param id ID hasil wawancara yang akan diubah
-     * @param request Request body berisi data hasil wawancara yang baru
-     * @return Response yang berisi data hasil wawancara yang sudah diubah
-     * 
-     * Status Code:
-     * - 200: OK - Hasil wawancara berhasil diubah
-     * - 404: Not Found - Data tidak ditemukan
-     * - 422: Unprocessable Entity - Validation error
-     * - 401: Unauthorized - Token invalid/expired
-     */
+
     @PUT("api/wawancara/hasil/{id}")
     suspend fun ubahHasilWawancara(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
         @Body request: HasilWawancaraRequest
     ): Response<HasilWawancaraSingleResponse>
-    
-    // ==========================================
-    // API Jadwal Rekrutmen
-    // ==========================================
     
     @GET("api/jadwal-rekrutmen")
     suspend fun getJadwalRekrutmen(

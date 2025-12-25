@@ -2,17 +2,28 @@
 package com.example.commitech.ui.screen
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -28,27 +39,54 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.commitech.ui.theme.LocalTheme
 import com.example.commitech.ui.viewmodel.Peserta
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModel
 import com.example.commitech.ui.viewmodel.SeleksiBerkasViewModelFactory
-import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.Q)
 @Composable
@@ -74,7 +112,6 @@ fun SeleksiBerkasScreen(
     val isLoading = state.isLoading
     val error = state.error
     val isDark = isSystemInDarkTheme()
-    val themeCard = LocalTheme.current
     
     LaunchedEffect(error) {
         error?.let {
@@ -86,7 +123,6 @@ fun SeleksiBerkasScreen(
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
     val subTitleColor = if (isDark) Color(0xFFBDBDBD) else Color(0xFF4A3A79)
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     var isExporting by remember { mutableStateOf(false) }
     var exportSuccess by remember { mutableStateOf(false) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
@@ -193,10 +229,8 @@ fun SeleksiBerkasScreen(
                             JumlahPesertaCard(total = state.totalItems)
                         }
                     }
-                    itemsIndexed(pesertaList) { index, peserta ->
-                        val actualIndex = ((state.currentPage - 1) * 20) + index + 1
+                    itemsIndexed(pesertaList) { _, peserta ->
                         PesertaCard(
-                            index = actualIndex,
                             peserta = peserta,
                             cardColor = cardColor,
                             textColor = textColor,
@@ -261,7 +295,7 @@ fun SeleksiBerkasScreen(
                                                 viewModel.loadPesertaFromDatabase(state.currentPage - 1, append = false)
                                             }
                                         },
-                                        enabled = state.currentPage > 1 && !state.isLoading,
+                                        enabled = state.currentPage > 1,
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFF4A3A79),
                                             disabledContainerColor = Color(0xFFBDBDBD)
@@ -283,7 +317,7 @@ fun SeleksiBerkasScreen(
                                         onClick = {
                                             viewModel.loadNextPage()
                                         },
-                                        enabled = state.hasMore && !state.isLoading,
+                                        enabled = state.hasMore,
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFF4A3A79),
                                             disabledContainerColor = Color(0xFFBDBDBD)
@@ -445,11 +479,14 @@ fun SeleksiBerkasScreen(
                     },
                     onOpenFile = if (exportSuccess && exportedFileUri != null) {
                         {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(Uri.parse(exportedFileUri), "*/*")
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            val fileUri = exportedFileUri
+                            if (fileUri != null) {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(fileUri.toUri(), "*/*")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(intent)
                             }
-                            context.startActivity(intent)
                         }
                     } else null
                 )
@@ -506,7 +543,6 @@ fun JumlahPesertaCard(
 
 @Composable
 fun PesertaCard(
-    index: Int,
     peserta: Peserta,
     cardColor: Color,
     textColor: Color,
@@ -533,10 +569,6 @@ fun PesertaCard(
             else -> Color(0xFFE0E0E0)
         },
         label = "borderAnim"
-    )
-    val animatedShadow by animateDpAsState(
-        targetValue = if (status != null) 6.dp else 2.dp,
-        label = "shadowAnim"
     )
 
     Card(
@@ -689,7 +721,6 @@ fun PesertaCard(
                     color = when (status) {
                         true -> Color(0xFF4CAF50).copy(alpha = 0.15f)
                         false -> Color(0xFFD32F2F).copy(alpha = 0.15f)
-                        else -> Color.Transparent
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -697,14 +728,12 @@ fun PesertaCard(
                         when (status) {
                             true -> "✓ Diterima"
                             false -> "✗ Ditolak"
-                            else -> ""
                         },
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = when (status) {
                             true -> Color(0xFF2E7D32)
                             false -> Color(0xFFB71C1C)
-                            else -> textColor
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -743,20 +772,18 @@ fun PesertaCard(
         )
     }
     if (showAcceptDialog) {
-        AcceptDialog(
-            peserta = pesertaTerbaru,
+        AcceptBerkasDialog(
             onDismiss = { showAcceptDialog = false },
-            onConfirm = { _ ->
+            onConfirm = {
                 viewModel.updatePesertaStatus(pesertaTerbaru.nama, lulusBerkas = true, ditolak = false)
                 showAcceptDialog = false
             }
         )
     }
     if (showRejectDialog) {
-        RejectDialog(
-            peserta = pesertaTerbaru,
+        RejectBerkasDialog(
             onDismiss = { showRejectDialog = false },
-            onConfirm = { _ ->
+            onConfirm = {
                 viewModel.updatePesertaStatus(pesertaTerbaru.nama, lulusBerkas = false, ditolak = true)
                 showRejectDialog = false
             }
@@ -769,7 +796,7 @@ fun InfoDialog(
     peserta: Peserta,
     onDismiss: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val isDark = isSystemInDarkTheme()
 
@@ -806,7 +833,7 @@ fun InfoDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                Brush.horizontalGradient(
                                     colors = listOf(
                                         Color(0xFF4A3A79),
                                         Color(0xFF4A3A79).copy(alpha = 0.8f)
@@ -910,7 +937,6 @@ fun InfoDialog(
                             if (!peserta.krsTerakhir.isNullOrBlank()) {
                                 AttachmentRow(
                                     label = "KRS Terakhir",
-                                    link = peserta.krsTerakhir,
                                     textColor = textColor,
                                     onLinkClick = {
                                         try {
@@ -932,7 +958,6 @@ fun InfoDialog(
                                 if (peserta.formulirPendaftaran.startsWith("http")) {
                                     AttachmentRow(
                                         label = "Formulir Pendaftaran",
-                                        link = peserta.formulirPendaftaran,
                                         textColor = textColor,
                                         onLinkClick = {
                                             try {
@@ -957,7 +982,6 @@ fun InfoDialog(
                                 if (peserta.suratKomitmen.startsWith("http")) {
                                     AttachmentRow(
                                         label = "Surat Komitmen",
-                                        link = peserta.suratKomitmen,
                                         textColor = textColor,
                                         onLinkClick = {
                                             try {
@@ -1010,7 +1034,7 @@ fun SectionCard(
                 fontWeight = FontWeight.Bold,
                 color = textColor
             )
-            Divider(
+            HorizontalDivider(
                 color = subTitleColor.copy(alpha = 0.3f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -1023,7 +1047,6 @@ fun SectionCard(
 @Composable
 fun AttachmentRow(
     label: String,
-    link: String,
     textColor: Color,
     onLinkClick: () -> Unit
 ) {
@@ -1092,8 +1115,7 @@ fun DetailRowInfo(label: String, value: String, textColor: Color = Color(0xFF1A1
 
 
 @Composable
-fun AcceptDialog(
-    peserta: Peserta,
+fun AcceptBerkasDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -1145,7 +1167,7 @@ fun AcceptDialog(
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         lineHeight = 24.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1198,8 +1220,7 @@ fun AcceptDialog(
 
 
 @Composable
-fun RejectDialog(
-    peserta: Peserta,
+fun RejectBerkasDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
@@ -1251,7 +1272,7 @@ fun RejectDialog(
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         lineHeight = 24.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1329,7 +1350,7 @@ fun EditPesertaDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            Brush.horizontalGradient(
                                 colors = listOf(
                                     Color(0xFF4A3A79),
                                     Color(0xFF4A3A79).copy(alpha = 0.8f)
@@ -1378,7 +1399,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1394,7 +1415,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1418,7 +1439,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1434,7 +1455,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1452,7 +1473,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1468,7 +1489,7 @@ fun EditPesertaDialog(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF4A3A79),
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedLabelColor = Color(0xFF4A3A79)
@@ -1561,7 +1582,7 @@ fun DeletePesertaDialog(
                         .size(80.dp)
                         .background(
                             Color(0xFFFFEBEE),
-                            shape = androidx.compose.foundation.shape.CircleShape
+                            shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1755,32 +1776,3 @@ fun ExportResultDialog(
     }
 }
 
-@Composable
-fun CircleIconButtonBerkas(
-    icon: ImageVector,
-    background: Color,
-    tint: Color,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(if (enabled) background else background.copy(alpha = 0.5f))
-            .clickable(
-                enabled = enabled,
-                onClick = onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (enabled) tint else tint.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}

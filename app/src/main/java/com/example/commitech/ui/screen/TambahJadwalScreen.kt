@@ -188,7 +188,7 @@ fun TambahJadwalScreen(
                             )
                         ) {
                             Text(
-                                if (tglMulai.isBlank()) "Tanggal Mulai" else tglMulai,
+                                tglMulai.ifBlank { "Tanggal Mulai" },
                                 fontSize = 13.sp
                             )
                         }
@@ -202,7 +202,7 @@ fun TambahJadwalScreen(
                             )
                         ) {
                             Text(
-                                if (tglSelesai.isBlank()) "Tanggal Selesai" else tglSelesai,
+                                tglSelesai.ifBlank { "Tanggal Selesai" },
                                 fontSize = 13.sp
                             )
                         }
@@ -245,7 +245,7 @@ fun TambahJadwalScreen(
                             )
                         ) {
                             Text(
-                                if (wktMulai.isBlank()) "09.00" else wktMulai,
+                                wktMulai.ifBlank { "09.00" },
                                 fontSize = 14.sp
                             )
                         }
@@ -266,7 +266,7 @@ fun TambahJadwalScreen(
                             )
                         ) {
                             Text(
-                                if (wktSelesai.isBlank()) "15.00" else wktSelesai,
+                                wktSelesai.ifBlank { "15.00" },
                                 fontSize = 14.sp
                             )
                         }
@@ -277,7 +277,7 @@ fun TambahJadwalScreen(
             Spacer(Modifier.height(24.dp))
 
             Button(
-                onClick = {
+                onClick = @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
                     if (judul.isNotBlank() && tglMulai.isNotBlank() && tglSelesai.isNotBlank()) {
                         val jadwalId = viewModel.daftarJadwal.maxOfOrNull { it.id }?.plus(1) ?: 1
                         viewModel.tambahJadwal(
