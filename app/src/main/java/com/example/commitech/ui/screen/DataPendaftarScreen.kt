@@ -87,13 +87,11 @@ fun DataPendaftarScreen(
     val authState by authViewModel.authState.collectAsState()
     val context = LocalContext.current
     var showImportGuide by rememberSaveable { mutableStateOf(true) }
-    
-    // Load data on start
+
     LaunchedEffect(Unit) {
         viewModel.loadPendaftarList(authState.token)
     }
 
-    // Sembunyikan kartu panduan setelah ada import sukses atau data sudah terisi
     LaunchedEffect(state.importMessage) {
         if (state.importMessage != null) {
             showImportGuide = false
@@ -105,31 +103,28 @@ fun DataPendaftarScreen(
             showImportGuide = false
         }
     }
-    
-    // File picker for Excel
+
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var filePickerError by remember { mutableStateOf<String?>(null) }
-    
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         filePickerError = null
         uri?.let {
             selectedFileUri = it
-            // Convert URI to File and upload
             try {
                 val inputStream = context.contentResolver.openInputStream(it)
                     ?: throw Exception("Tidak dapat membaca file. Pastikan file Excel valid.")
-                
-                // Get file name from URI - try multiple methods
+
                 var fileName = uri.lastPathSegment ?: "import_${System.currentTimeMillis()}.xlsx"
-                
-                // Try to get file name from content resolver
+
                 try {
                     val cursor = context.contentResolver.query(
                         uri, arrayOf(OpenableColumns.DISPLAY_NAME),
                         null, null, null
                     )
+
                     cursor?.use {
                         if (it.moveToFirst()) {
                             val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -139,41 +134,36 @@ fun DataPendaftarScreen(
                         }
                     }
                 } catch (e: Exception) {
-                    // Fallback to default name
                 }
-                
-                // Ensure file has .xlsx or .xls extension
+
                 if (!fileName.endsWith(".xlsx", ignoreCase = true) && 
                     !fileName.endsWith(".xls", ignoreCase = true)) {
                     fileName += ".xlsx"
                 }
-                
+
                 val file = File(context.cacheDir, fileName)
                 val outputStream = FileOutputStream(file)
                 inputStream.copyTo(outputStream)
                 inputStream.close()
                 outputStream.close()
-                
-                // Verify file exists and has content
+
                 if (!file.exists() || file.length() == 0L) {
                     throw Exception("File kosong atau tidak valid. Pastikan file Excel memiliki data.")
                 }
-                
+
                 viewModel.importExcel(authState.token, file)
+
             } catch (e: Exception) {
                 filePickerError = "Error membaca file: ${e.message}"
                 viewModel.clearError()
             }
         }
     }
-    
-    // Launch file picker with Excel MIME types
+
     fun launchFilePicker() {
         try {
-            // Try to launch with Excel-specific MIME types first
             filePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         } catch (e: Exception) {
-            // Fallback to all files if specific MIME type fails
             filePickerLauncher.launch("*/*")
         }
     }
@@ -213,7 +203,6 @@ fun DataPendaftarScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tombol Import Excel
             Button(
                 onClick = { 
                     launchFilePicker()
@@ -244,16 +233,14 @@ fun DataPendaftarScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // FITUR BARU: Search Bar dengan Button
+
             var searchQuery by remember { mutableStateOf("") }
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Search TextField
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { newQuery ->
@@ -302,8 +289,7 @@ fun DataPendaftarScreen(
                         }
                     )
                 )
-                
-                // Search Button
+
                 Button(
                     onClick = {
                         viewModel.searchPendaftar(authState.token, searchQuery)
@@ -327,8 +313,7 @@ fun DataPendaftarScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // File Picker Error
+
             filePickerError?.let { error ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -352,8 +337,7 @@ fun DataPendaftarScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            
-            // Error/Success Message
+
             state.error?.let { error ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -369,7 +353,7 @@ fun DataPendaftarScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            
+
             state.importMessage?.let { message ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -385,8 +369,7 @@ fun DataPendaftarScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            
-            // Info Card - Cara Import Excel (hanya tampil jika belum ada data/import)
+
             if (showImportGuide) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -425,7 +408,6 @@ fun DataPendaftarScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Card Jumlah Pendaftar dengan Gradient
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -468,7 +450,6 @@ fun DataPendaftarScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Loading indicator saat reload setelah import
             if (state.isReloading) {
                 Box(
                     modifier = Modifier
@@ -497,13 +478,11 @@ fun DataPendaftarScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // LazyColumn (Daftar Pendaftar)
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 itemsIndexed(pendaftarState) { index, pendaftar ->
-                    // Calculate actual index with pagination
                     val actualIndex = ((state.currentPage - 1) * 20) + index + 1
                     PendaftarItem(
                         index = actualIndex,
@@ -513,12 +492,10 @@ fun DataPendaftarScreen(
                         }
                     )
                 }
-                
-                // Pagination Info & Controls
+
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Pagination Info
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
@@ -534,21 +511,21 @@ fun DataPendaftarScreen(
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF424242)
                             )
-                            
+
                             Spacer(modifier = Modifier.height(4.dp))
-                            
-                            // Info peserta di halaman ini (di tengah)
+
                             val startItem = if (pendaftarState.isNotEmpty()) {
                                 ((state.currentPage - 1) * 20) + 1
                             } else {
                                 0
                             }
+
                             val endItem = if (pendaftarState.isNotEmpty()) {
                                 ((state.currentPage - 1) * 20) + pendaftarState.size
                             } else {
                                 0
                             }
-                            
+
                             if (startItem > 0 && endItem > 0) {
                                 Text(
                                     text = "Menampilkan $startItem-$endItem dari ${state.totalItems}",
@@ -557,16 +534,14 @@ fun DataPendaftarScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Pagination Buttons
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Previous Button
                                 Button(
                                     onClick = {
                                         if (state.currentPage > 1) {
@@ -587,10 +562,9 @@ fun DataPendaftarScreen(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
-                                
+
                                 Spacer(modifier = Modifier.width(12.dp))
-                                
-                                // Next Button
+
                                 Button(
                                     onClick = {
                                         if (state.hasMore) {
@@ -614,14 +588,13 @@ fun DataPendaftarScreen(
                             }
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
     }
-    
-    // Error Dialog
+
     state.error?.let { error ->
         AlertDialog(
             onDismissRequest = { viewModel.clearError() },
@@ -673,7 +646,6 @@ fun PendaftarItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                // Nama + Info Button
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -684,8 +656,7 @@ fun PendaftarItem(
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onSurface
                     )
-                    
-                    // Info Button - sama besar dengan icon lain
+
                     CircleIconButton(
                         icon = Icons.Default.Info,
                         background = Color(0xFFE3F2FD),
@@ -695,14 +666,13 @@ fun PendaftarItem(
                         showDetailDialog = true
                     }
                 }
-                
+
                 Spacer(Modifier.height(4.dp))
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // NIM
                     Text(
                         pendaftar.nim,
                         fontSize = 13.sp,
@@ -713,7 +683,6 @@ fun PendaftarItem(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Tombol Delete
                 CircleIconButton(
                     icon = Icons.Default.Delete,
                     background = Color(0xFFFFEBEE),
@@ -726,7 +695,6 @@ fun PendaftarItem(
         }
     }
 
-    // Dialog Detail Pendaftar
     if (showDetailDialog) {
         DetailPendaftarDialog(
             pendaftar = pendaftar,
@@ -737,8 +705,7 @@ fun PendaftarItem(
             }
         )
     }
-    
-    // Dialog Konfirmasi Hapus
+
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
             pendaftarName = pendaftar.nama,
@@ -773,7 +740,6 @@ fun DetailPendaftarDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
-                // Header dengan nama dan tombol close
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -791,7 +757,7 @@ fun DetailPendaftarDialog(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            Icons.Default.Close,
                             contentDescription = "Close",
                             tint = Color(0xFF666666)
                         )
@@ -800,7 +766,6 @@ fun DetailPendaftarDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Detail Informasi (Menggunakan data dari Pendaftar)
                 DetailRowPendaftar(
                     label = "Pilihan Divisi 1",
                     value = pendaftar.divisi1
@@ -825,16 +790,15 @@ fun DetailPendaftarDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // PERBAIKAN: Tampilkan link Google Drive
                 Text(
                     text = "Dokumen Pendaftar",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A40)
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 DetailRowWithLink(
                     label = "KRS Terakhir",
                     link = pendaftar.krsTerakhir
@@ -848,12 +812,11 @@ fun DetailPendaftarDialog(
                     link = pendaftar.suratKomitmen
                 )
 
-                // Tombol Delete
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = onDelete,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.error // Warna merah
+                        containerColor = colorScheme.error
                     ),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -937,7 +900,7 @@ fun DetailRowWithLink(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -952,9 +915,8 @@ fun DetailRowWithLink(
             color = Color(0xFF1A1A40),
             modifier = Modifier.weight(1f)
         )
-        
+
         if (!link.isNullOrEmpty()) {
-            // Tombol link yang bisa diklik
             TextButton(
                 onClick = {
                     try {
@@ -1018,7 +980,6 @@ fun DeleteConfirmationDialog(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Icon Warning
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -1035,30 +996,27 @@ fun DeleteConfirmationDialog(
                         modifier = Modifier.size(40.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(20.dp))
-                
-                // Title
+
                 Text(
                     text = "Hapus Data?",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onSurface
                 )
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
-                // Message
+
                 Text(
                     text = "Apakah Anda yakin ingin menghapus data pendaftar",
                     fontSize = 14.sp,
                     color = colorScheme.onSurface.copy(alpha = 0.7f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                // Nama Pendaftar
+
                 Text(
                     text = "\"$pendaftarName\"?",
                     fontSize = 15.sp,
@@ -1068,15 +1026,13 @@ fun DeleteConfirmationDialog(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                // Buttons
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Tombol Batal
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -1095,8 +1051,7 @@ fun DeleteConfirmationDialog(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    
-                    // Tombol Hapus
+
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier

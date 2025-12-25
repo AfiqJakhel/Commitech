@@ -42,11 +42,9 @@ fun SettingsScreen(
     val settingsState by viewModel.settingsState.collectAsState()
     val authState by authViewModel.authState.collectAsState()
     
-    // Dialog states
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     
-    // Animation state
     var isVisible by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
@@ -88,7 +86,6 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 20.dp)
         ) {
-            // Header Profile Section
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -101,7 +98,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Appearance Section
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -143,7 +139,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Notifications Section
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -186,7 +181,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Data & Storage Section
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -223,7 +217,7 @@ fun SettingsScreen(
                         icon = Icons.Default.CloudDownload,
                         title = "Unduh Data",
                         subtitle = "Export data ke perangkat",
-                        onClick = { /* TODO */ }
+                        onClick = { }
                     )
                 }
             }
@@ -237,12 +231,11 @@ fun SettingsScreen(
                         icon = Icons.Default.DeleteSweep,
                         title = "Hapus Cache",
                         subtitle = "Bersihkan data sementara",
-                        onClick = { /* TODO */ }
+                        onClick = { }
                     )
                 }
             }
             
-            // About Section
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -264,7 +257,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Description,
                         title = "Syarat & Ketentuan",
                         subtitle = "Baca kebijakan aplikasi",
-                        onClick = { /* TODO */ }
+                        onClick = { }
                     )
                 }
             }
@@ -278,7 +271,7 @@ fun SettingsScreen(
                         icon = Icons.Default.PrivacyTip,
                         title = "Kebijakan Privasi",
                         subtitle = "Pelajari tentang privasi Anda",
-                        onClick = { /* TODO */ }
+                        onClick = { }
                     )
                 }
             }
@@ -292,12 +285,11 @@ fun SettingsScreen(
                         icon = Icons.Default.Update,
                         title = "Versi Aplikasi",
                         subtitle = "v1.0.0 (Build 1)",
-                        onClick = { /* TODO */ }
+                        onClick = { }
                     )
                 }
             }
             
-            // Logout Button
             item {
                 AnimatedSettingsCard(
                     isVisible = isVisible,
@@ -307,14 +299,12 @@ fun SettingsScreen(
                 }
             }
             
-            // Bottom Spacing
             item {
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
     
-    // Language Dialog
     if (showLanguageDialog) {
         LanguageSelectionDialog(
             currentLanguage = settingsState.selectedLanguage,
@@ -326,7 +316,6 @@ fun SettingsScreen(
         )
     }
     
-    // Logout Confirmation Dialog
     if (showLogoutDialog) {
         LogoutConfirmationDialog(
             onDismiss = { showLogoutDialog = false },
@@ -344,7 +333,6 @@ fun AnimatedSettingsCard(
     delay: Int,
     content: @Composable () -> Unit
 ) {
-    // Simplified animation - just fade in without complex transformations
     var animatedVisibility by remember { mutableStateOf(false) }
     
     LaunchedEffect(isVisible) {
@@ -396,7 +384,6 @@ fun ProfileSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Avatar
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -427,7 +414,7 @@ fun ProfileSection(
                 )
             }
             
-            IconButton(onClick = { /* Edit Profile */ }) {
+            IconButton(onClick = { }) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = "Edit Profile",

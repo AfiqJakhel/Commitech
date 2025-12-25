@@ -37,7 +37,6 @@ fun UbahDetailScreen(
     val daftarDivisi = viewModel.getAllDivisiNames()
     val colorScheme = MaterialTheme.colorScheme
 
-    // Ambil data peserta yang akan diedit
     LaunchedEffect(namaPeserta) {
         val peserta = viewModel.getAllParticipants().find { it.name == namaPeserta }
         if (peserta != null) {
@@ -83,7 +82,6 @@ fun UbahDetailScreen(
         ) {
             Spacer(Modifier.height(20.dp))
             
-            // Header dengan nama peserta
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -104,7 +102,6 @@ fun UbahDetailScreen(
 
             Spacer(Modifier.height(32.dp))
             
-            // Section Title
             Text(
                 "Informasi Detail",
                 fontWeight = FontWeight.Bold,
@@ -114,7 +111,6 @@ fun UbahDetailScreen(
             
             Spacer(Modifier.height(16.dp))
 
-            // Card Divisi
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -196,7 +192,6 @@ fun UbahDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Card Status
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -282,7 +277,6 @@ fun UbahDetailScreen(
 
             Spacer(Modifier.height(20.dp))
             
-            // Warning untuk status ditolak
             if (selectedStatus == "Ditolak") {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -315,11 +309,9 @@ fun UbahDetailScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            // Tombol Simpan
             var isLoading by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
             
-            // Tampilkan error jika ada
             errorMessage?.let { error ->
                 Card(
                     modifier = Modifier
@@ -363,9 +355,7 @@ fun UbahDetailScreen(
                             token = token,
                             onSuccess = {
                                 isLoading = false
-                                // Sync ulang setelah update
                                 viewModel.syncFromSeleksiWawancara(seleksiViewModel)
-                                // Navigasi balik
                                 navController.popBackStack()
                             },
                             onError = { error ->

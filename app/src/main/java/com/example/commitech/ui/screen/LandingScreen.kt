@@ -20,9 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.commitech.R
 
-// ===========================================================
-// 🌈 Halaman Landing
-// ===========================================================
+
 @Composable
 fun LandingScreen(
     onLoginClick: () -> Unit,
@@ -38,7 +36,6 @@ fun LandingScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Gambar utama landing page
             Image(
                 painter = painterResource(id = R.drawable.landingpage),
                 contentDescription = "Landing Illustration",
@@ -50,7 +47,7 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Judul
+
             Text(
                 text = "COMMITECH",
                 fontSize = 26.sp,
@@ -59,7 +56,7 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Tombol Login (Outlined)
+
             SimpleOutlinedButton(
                 text = "LOGIN",
                 borderColor = MaterialTheme.colorScheme.primary,
@@ -69,7 +66,7 @@ fun LandingScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tombol SignUp (Outlined)
+
             SimpleOutlinedButton(
                 text = "SIGN UP",
                 borderColor = MaterialTheme.colorScheme.primary,
@@ -80,9 +77,7 @@ fun LandingScreen(
     }
 }
 
-// ===========================================================
-// 🔘 Reusable Outlined Button (tanpa animasi warna)
-// ===========================================================
+
 @Composable
 fun SimpleOutlinedButton(
     text: String,

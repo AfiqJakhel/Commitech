@@ -34,14 +34,13 @@ fun LoginScreen(
     
     val authState by authViewModel.authState.collectAsState()
     
-    // Navigate to home when login successful
+
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
             onLoginClick()
         }
     }
-    
-    // Show error dialog
+
     authState.error?.let { errorMessage ->
         ErrorDialog(
             title = "Login Gagal",
@@ -62,13 +61,13 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // 🔙 HEADER (Back + Title di tengah)
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
-                // Tombol Back (paling kiri)
+
                 IconButton(
                     onClick = onBackClick,
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -80,7 +79,7 @@ fun LoginScreen(
                     )
                 }
 
-                // Judul di tengah
+
 
             }
             Box(
@@ -98,7 +97,7 @@ fun LoginScreen(
             }
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 🧑 Email Field
+
             Text(
                 text = "Email",
                 fontWeight = FontWeight.Medium,
@@ -132,7 +131,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔒 Password Field
+
             Text(
                 text = "Password",
                 fontWeight = FontWeight.Medium,
@@ -161,7 +160,7 @@ fun LoginScreen(
                 )
             )
 
-            // 🔗 Forgot password
+
             Text(
                 text = "Forgot password?",
                 fontSize = 13.sp,
@@ -175,11 +174,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             val loginColor = LocalTheme.current.ButtonLogin
-            // 🔘 Tombol Login
+
             Button(
                 onClick = {
                     if (email.isNotBlank() && password.isNotBlank()) {
-                        // Trim email untuk menghilangkan whitespace
+
                         authViewModel.login(email.trim(), password)
                     }
                 },
@@ -218,25 +217,25 @@ fun LoginScreen(
                         .align(Alignment.Center),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // "Already have an account?" text dengan warna hitam
+
                     Text(
                         text = "Don't have an account?",
                         fontWeight = FontWeight.Medium,
-                        color = colorScheme.onBackground,  // Warna hitam
+                        color = colorScheme.onBackground,
                         fontSize = 14.sp,
                     )
 
-                    // Spasi kecil antara teks
+
                     Spacer(modifier = Modifier.width(4.dp))
 
 
-                    // "Sign In" dengan warna utama
+
                     Text(
                         modifier = Modifier
                             .clickable { onSignUpClick() },
                         text = "Sign Up",
                         fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.primary, // Warna tema (warna utama)
+                        color = colorScheme.primary,
                         fontSize = 14.sp
                     )
                 }

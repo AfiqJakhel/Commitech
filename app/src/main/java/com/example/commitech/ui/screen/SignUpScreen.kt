@@ -33,14 +33,12 @@ fun SignUpScreen(
     
     val authState by authViewModel.authState.collectAsState()
     
-    // Navigate to home when registration successful
     LaunchedEffect(authState.isAuthenticated) {
         if (authState.isAuthenticated) {
             onSignUpClick()
         }
     }
     
-    // Show error dialog
     authState.error?.let { errorMessage ->
         ErrorDialog(
             title = "Registrasi Gagal",
@@ -61,13 +59,11 @@ fun SignUpScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // 🔙 HEADER (Back + Title di tengah)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
-                // Tombol Back (paling kiri)
                 IconButton(
                     onClick = onBackClick,
                     modifier = Modifier.align(Alignment.CenterStart)
@@ -96,7 +92,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 🧑 Name Field
             Text(
                 text = "Name",
                 fontWeight = FontWeight.ExtraBold,
@@ -126,7 +121,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 📧 Email Field
             Text(
                 text = "Email",
                 fontWeight = FontWeight.ExtraBold,
@@ -156,7 +150,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔒 Password Field
             Text(
                 text = "Password",
                 fontWeight = FontWeight.ExtraBold,
@@ -187,7 +180,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔒 Confirm Password Field
             Text(
                 text = "Confirm Password",
                 fontWeight = FontWeight.ExtraBold,
@@ -219,7 +211,6 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             val loginColor = LocalTheme.current.ButtonLogin
-            // 🔘 Tombol Sign Up
             Button(
                 onClick = {
                     if (name.isNotBlank() && email.isNotBlank() && 
@@ -256,7 +247,6 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(36.dp))
 
-            // 🔹 Sign In link (Link ke halaman login di bawah)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -267,25 +257,22 @@ fun SignUpScreen(
                         .align(Alignment.Center),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // "Already have an account?" text dengan warna hitam
                     Text(
                         text = "Already have an account?",
                         fontWeight = FontWeight.Medium,
-                        color = colorScheme.onBackground,  // Warna hitam
+                        color = colorScheme.onBackground,
                         fontSize = 14.sp,
                     )
 
-                    // Spasi kecil antara teks
                     Spacer(modifier = Modifier.width(4.dp))
 
 
-                    // "Sign In" dengan warna utama
                     Text(
                         modifier = Modifier
-                        .clickable { onLoginClick() }, // Menambahkan clickable pada seluruh Text
+                        .clickable { onLoginClick() },
                         text = "Sign In",
                         fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.primary, // Warna tema (warna utama)
+                        color = colorScheme.primary,
                         fontSize = 14.sp
                     )
                 }

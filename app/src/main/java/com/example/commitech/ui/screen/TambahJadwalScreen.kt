@@ -89,7 +89,6 @@ fun TambahJadwalScreen(
         ) {
             Spacer(Modifier.height(16.dp))
             
-            // Card untuk form
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,7 +178,6 @@ fun TambahJadwalScreen(
                     
                     Spacer(Modifier.height(12.dp))
 
-                    // Baris tanggal mulai & selesai
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         OutlinedButton(
                             onClick = { tanggalMulaiDialog = true },
@@ -233,7 +231,6 @@ fun TambahJadwalScreen(
                     
                     Spacer(Modifier.height(12.dp))
 
-                    // Baris waktu mulai & selesai
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -279,7 +276,6 @@ fun TambahJadwalScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // Tombol simpan
             Button(
                 onClick = {
                     if (judul.isNotBlank() && tglMulai.isNotBlank() && tglSelesai.isNotBlank()) {
@@ -294,14 +290,12 @@ fun TambahJadwalScreen(
                             lokasi
                         )
                         
-                        // Cek apakah jadwal untuk hari ini atau besok
                         try {
                             val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("id", "ID"))
                             val tanggalJadwal = LocalDate.parse(tglMulai, dateFormatter)
                             val hariIni = LocalDate.now()
                             val daysBetween = ChronoUnit.DAYS.between(hariIni, tanggalJadwal)
                             
-                            // Jika jadwal hari ini atau besok, tampilkan notifikasi langsung
                             if (daysBetween == 0L || daysBetween == 1L) {
                                 InterviewNotificationHelper.showJadwalUrgentNotification(
                                     context = context,
@@ -314,11 +308,9 @@ fun TambahJadwalScreen(
                                 )
                             }
                         } catch (e: Exception) {
-                            // Jika parsing gagal, lanjutkan saja
                             e.printStackTrace()
                         }
                         
-                        // Schedule alarm H-1 untuk notifikasi (jika bukan hari ini/besok)
                         InterviewAlarmScheduler.scheduleJadwalReminder(
                             context = context,
                             jadwalId = jadwalId,
@@ -350,7 +342,6 @@ fun TambahJadwalScreen(
             Spacer(Modifier.height(20.dp))
 
 
-            // 🔹 DatePicker dialogs
             if (tanggalMulaiDialog) {
                 val dateState = rememberDatePickerState()
                 DatePickerDialog(
@@ -389,7 +380,6 @@ fun TambahJadwalScreen(
                 ) { DatePicker(state = dateState) }
             }
 
-            // 🔹 TimePicker dialogs
             if (waktuMulaiDialog) {
                 val timeState = rememberTimePickerState(initialHour = 9, initialMinute = 0)
                 AlertDialog(

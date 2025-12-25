@@ -60,8 +60,7 @@ fun HomeScreen(
 
     var isVisible by remember { mutableStateOf(false) }
     
-    // Load data pendaftar saat HomeScreen dibuka
-    // Set authToken ke JadwalViewModel saat token tersedia
+
     LaunchedEffect(authState.token) {
         authState.token?.let { token ->
             jadwalViewModel.setAuthToken(token)
@@ -71,11 +70,11 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
-        // Load jumlah pendaftar dari backend
+       
         dataPendaftarViewModel.loadPendaftarList(authState.token)
     }
     
-    // Hitung jumlah notifikasi dari jadwal
+   
     val jadwalList = jadwalViewModel.daftarJadwal
     val dateFormatter = jadwalViewModel.formatter
     val today = LocalDate.now()
@@ -84,7 +83,7 @@ fun HomeScreen(
         try {
             val jadwalDate = LocalDate.parse(jadwal.tanggalMulai, dateFormatter)
             val daysBetween = ChronoUnit.DAYS.between(today, jadwalDate)
-            daysBetween in 0..30 // Jadwal dalam 30 hari ke depan
+            daysBetween in 0..30 
         } catch (e: Exception) {
             false
         }
@@ -101,7 +100,7 @@ fun HomeScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 🔹 Enhanced Header with Animation
+
                 AnimatedVisibility(
                     visible = isVisible,
                     enter = slideInVertically(
@@ -168,7 +167,6 @@ fun HomeScreen(
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // 🔔 Notifikasi Button with animation and badge
                                 var notifScale by remember { mutableFloatStateOf(1f) }
                                 val notifScaleAnim by animateFloatAsState(
                                     targetValue = notifScale,
@@ -210,7 +208,7 @@ fun HomeScreen(
                                     }
                                 }
                                 
-                                // ⚙️ Settings Button with animation
+                               
                                 var settingsScale by remember { mutableFloatStateOf(1f) }
                                 val settingsScaleAnim by animateFloatAsState(
                                     targetValue = settingsScale,
@@ -256,7 +254,7 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 📊 Jumlah Pendaftar with Animation
+             
                 AnimatedVisibility(
                     visible = isVisible,
                     enter = slideInHorizontally(
@@ -287,7 +285,6 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Angka + Deskripsi sejajar
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
@@ -331,7 +328,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 🔸 Kartu Menu (klik masing-masing)
+            
             val cards = listOf(
                 HomeCardData(
                     "Data Pendaftar",

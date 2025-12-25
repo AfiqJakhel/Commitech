@@ -38,9 +38,9 @@ data class NotificationItem(
 )
 
 enum class NotificationType {
-    URGENT,    // Merah - jadwal hari ini
-    REMINDER,  // Kuning - jadwal besok
-    INFO       // Biru - informasi umum
+    URGENT,
+    REMINDER,
+    INFO
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +58,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
         isVisible = true
     }
 
-    // Generate notifications from jadwal
+
     val notifications = remember(jadwalList) {
         jadwalList.mapNotNull { jadwal ->
             try {
@@ -91,7 +91,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
                     else -> null
                 }
             } catch (e: Exception) {
-                // Jika parsing gagal, tetap tampilkan notifikasi sebagai info
+
                 NotificationItem(
                     id = jadwal.id,
                     title = "Jadwal: ${jadwal.judul}",
@@ -138,7 +138,7 @@ fun NotifikasiScreen(navController: NavController, viewModel: JadwalViewModel) {
         containerColor = colorScheme.background
     ) { innerPadding ->
         if (notifications.isEmpty()) {
-            // Empty State
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -267,7 +267,7 @@ fun NotificationSummaryCard(notificationCount: Int) {
                 }
             }
             
-            // Badge dengan bentuk circle yang lebih bagus
+
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -320,7 +320,7 @@ fun NotificationCard(notification: NotificationItem) {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Icon Section
+
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -336,7 +336,7 @@ fun NotificationCard(notification: NotificationItem) {
                 )
             }
             
-            // Content Section
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)

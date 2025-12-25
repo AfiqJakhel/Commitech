@@ -34,14 +34,14 @@ fun SplashScreen(
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(1500) // Minimum delay untuk animasi splash
+        delay(1500)
         
-        // Wait until loading is finished
+
         while (authState.isLoading) {
-            delay(100) // Poll every 100ms
+            delay(100)
         }
         
-        // CRITICAL: Check auth state untuk auto-login
+
         if (authState.isAuthenticated && authState.token != null) {
             onNavigateToHome()
         } else {
@@ -49,7 +49,7 @@ fun SplashScreen(
         }
     }
 
-    // Tampilan splash
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -61,7 +61,7 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.commitechlogo), // Ganti dengan logo kamu
+                painter = painterResource(id = R.drawable.commitechlogo),
                 contentDescription = "App Logo",
                 modifier = Modifier
                     .size(500.dp)

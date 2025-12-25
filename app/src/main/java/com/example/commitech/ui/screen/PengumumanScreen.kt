@@ -62,42 +62,37 @@ fun PengumumanScreen(
     var showPilihan by remember { mutableStateOf(false) }
     var selectedPeserta by remember { mutableStateOf<ParticipantInfo?>(null) }
 
-    // State untuk track perubahan data
+
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
-    // Get auth token - menggunakan pattern yang sama seperti DetailJadwalWawancaraScreen
     val authState by authViewModel?.authState?.collectAsState() ?: remember {
         mutableStateOf(AuthState())
     }
     val authToken = authState.token
 
-    // Load data dari database melalui SeleksiWawancaraViewModel
+
     val hasilWawancaraList by seleksiViewModel.hasilWawancaraList.collectAsState()
 
-    // Load data hasil wawancara saat screen dibuka
+
     LaunchedEffect(Unit) {
         authToken?.let { token ->
             seleksiViewModel.loadHasilWawancaraAndUpdateStatus(token, forceReload = true)
         }
     }
 
-    // Update UI saat hasilWawancaraList berubah
+
     LaunchedEffect(hasilWawancaraList) {
-        // Load dari database hasil wawancara yang sudah diterima
-        // Hapus semua peserta yang ada terlebih dahulu
+
         viewModel.daftarDivisi.forEach { it.pesertaLulus.clear() }
 
-        // Tambahkan peserta yang diterima dari database
-        // Filter: status == "diterima" (divisi bisa null, akan ditampilkan di divisi yang sesuai atau "Lainnya")
         hasilWawancaraList.filter {
             it.status == "diterima"
         }.forEach { hasil ->
-            // Jika divisi tidak null/blank, cari divisi yang sesuai
-            // Jika divisi null/blank, tetap tampilkan (bisa ditambahkan ke divisi pertama atau "Lainnya")
+
             val divisiName = if (!hasil.divisi.isNullOrBlank()) {
                 hasil.divisi
             } else {
-                // Jika tidak ada divisi, tambahkan ke divisi pertama yang tersedia
+
                 viewModel.daftarDivisi.firstOrNull()?.namaDivisi ?: "Lainnya"
             }
 
@@ -111,7 +106,7 @@ fun PengumumanScreen(
                     )
                 )
             } else {
-                // Jika divisi tidak ditemukan, tambahkan ke divisi pertama
+
                 viewModel.daftarDivisi.firstOrNull()?.pesertaLulus?.add(
                     ParticipantInfo(
                         name = hasil.namaPeserta,
@@ -166,7 +161,7 @@ fun PengumumanScreen(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // Header Card dengan gradient yang lebih menarik
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -266,7 +261,7 @@ fun PengumumanScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            // Section header dengan style yang lebih menarik
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -315,7 +310,7 @@ fun PengumumanScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Daftar Divisi dengan animasi
+
             daftarDivisi.forEach { divisi ->
                 var expanded by remember { mutableStateOf(false) }
                 val rotationAngle by animateFloatAsState(
@@ -355,7 +350,7 @@ fun PengumumanScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Avatar dengan gradient sesuai tema
+
                                 Box(
                                     modifier = Modifier
                                         .size(48.dp)
@@ -550,7 +545,7 @@ fun PengumumanScreen(
                 }
             }
 
-            // Tombol Edit
+
             if (selectedPeserta != null) {
                 Spacer(Modifier.height(24.dp))
                 Button(
@@ -581,7 +576,7 @@ fun PengumumanScreen(
                 }
             }
 
-            // Tombol Export PDF dengan design yang lebih menarik
+
             Spacer(Modifier.height(28.dp))
             val context = LocalContext.current
             Card(
@@ -622,7 +617,7 @@ fun PengumumanScreen(
                                     context = context,
                                     daftarDivisi = daftarDivisi,
                                     onSuccess = { uri ->
-                                        // Share PDF
+
                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "application/pdf"
                                             putExtra(Intent.EXTRA_STREAM, uri)

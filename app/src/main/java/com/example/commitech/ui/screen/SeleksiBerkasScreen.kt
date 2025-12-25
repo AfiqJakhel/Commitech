@@ -64,7 +64,6 @@ fun SeleksiBerkasScreen(
 
     val authState by authViewModel.authState.collectAsState()
     
-    // Set token dan load data saat pertama kali
     LaunchedEffect(Unit) {
         authState.token?.let { token ->
             viewModel.setAuthToken(token)
@@ -77,14 +76,11 @@ fun SeleksiBerkasScreen(
     val isDark = isSystemInDarkTheme()
     val themeCard = LocalTheme.current
     
-    // Tampilkan error jika ada
     LaunchedEffect(error) {
         error?.let {
-            // Error sudah di-handle di ViewModel, bisa ditampilkan di UI jika perlu
         }
     }
 
-    // 🎨 Warna berdasarkan tema
     val backgroundColor = if (isDark) Color(0xFF121212) else Color.White
     val cardColor = if (isDark) Color(0xFF1E1E1E) else Color.White
     val textColor = if (isDark) Color(0xFFECECEC) else Color(0xFF1A1A1A)
@@ -136,13 +132,11 @@ fun SeleksiBerkasScreen(
                 .padding(innerPadding)
         ) {
             if (isLoading) {
-                // Loading indicator
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = Color(0xFF4A3A79)
                 )
             } else if (error != null) {
-                // Error message
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -163,7 +157,6 @@ fun SeleksiBerkasScreen(
                     }
                 }
             } else if (pesertaList.isEmpty()) {
-                // Empty state
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -194,7 +187,7 @@ fun SeleksiBerkasScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(backgroundColor) // ✅ background penutup full
+                                .background(backgroundColor)
                                 .padding(top = 8.dp, bottom = 8.dp)
                         ) {
                             JumlahPesertaCard(total = state.totalItems)
@@ -212,11 +205,9 @@ fun SeleksiBerkasScreen(
                         )
                     }
 
-                    // Pagination Info & Controls
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Pagination Info Card
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
@@ -259,13 +250,11 @@ fun SeleksiBerkasScreen(
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                // Pagination Buttons
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Previous Button
                                     Button(
                                         onClick = {
                                             if (state.currentPage > 1) {
@@ -290,7 +279,6 @@ fun SeleksiBerkasScreen(
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
-                                    // Next Button
                                     Button(
                                         onClick = {
                                             viewModel.loadNextPage()
@@ -319,13 +307,10 @@ fun SeleksiBerkasScreen(
                 }
             }
 
-            // Export Button - Hanya enabled jika semua peserta sudah direview
             val semuaSudahDireview = viewModel.semuaPesertaSudahDireview
 
-            // ================= EXPORT BUTTON AREA =================
             when {
 
-                // ===== LOADING STATE =====
                 isExporting -> {
                     Column(
                         modifier = Modifier
@@ -360,7 +345,6 @@ fun SeleksiBerkasScreen(
                     }
                 }
 
-                // ===== BELUM SEMUA DIREVIEW =====
                 !semuaSudahDireview -> {
                     Button(
                         onClick = {},
@@ -387,7 +371,6 @@ fun SeleksiBerkasScreen(
                     }
                 }
 
-                // ===== SEMUA DIREVIEW → CSV & PDF =====
                 else -> {
                     Row(
                         modifier = Modifier
@@ -398,7 +381,6 @@ fun SeleksiBerkasScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
 
-                        // ===== CSV BUTTON =====
                         Button(
                             onClick = {
                                 isExporting = true
@@ -425,7 +407,6 @@ fun SeleksiBerkasScreen(
                             )
                         }
 
-                        // ===== PDF BUTTON =====
                         Button(
                             onClick = {
                                 isExporting = true
@@ -538,13 +519,11 @@ fun PesertaCard(
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Collect peserta list untuk mendapatkan update terbaru
     val pesertaList by viewModel.pesertaList.collectAsState()
     val pesertaTerbaru = remember(pesertaList) {
         pesertaList.find { it.nama == peserta.nama } ?: peserta
     }
 
-    // Gunakan status dari peserta terbaru
     val status = if (pesertaTerbaru.lulusBerkas) true else if (pesertaTerbaru.ditolak) false else null
 
     val animatedBorderColor by animateColorAsState(
@@ -573,13 +552,11 @@ fun PesertaCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header: Nama + NIM (kiri atas) dan Menu 3 titik (kanan atas)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Nama dan NIM di kiri atas
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -594,7 +571,6 @@ fun PesertaCard(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
 
-                    // NIM di sebelah nama
                     if (!pesertaTerbaru.nim.isNullOrBlank()) {
                         Text(
                             text = "• ${pesertaTerbaru.nim}",
@@ -605,7 +581,6 @@ fun PesertaCard(
                     }
                 }
 
-                // Menu 3 titik di kanan atas
                 var showMenu by remember { mutableStateOf(false) }
 
                 Box {
@@ -660,14 +635,12 @@ fun PesertaCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Footer: Button Terima dan Tolak di tengah (hanya jika belum direview)
             if (status == null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Tombol Terima
                     Button(
                         onClick = { showAcceptDialog = true },
                         colors = ButtonDefaults.buttonColors(
@@ -689,7 +662,6 @@ fun PesertaCard(
                         Text("Terima", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
 
-                    // Tombol Tolak
                     Button(
                         onClick = { showRejectDialog = true },
                         colors = ButtonDefaults.buttonColors(
@@ -712,7 +684,6 @@ fun PesertaCard(
                     }
                 }
             } else {
-                // Jika sudah direview, tampilkan status badge di tengah
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = when (status) {
@@ -745,7 +716,6 @@ fun PesertaCard(
         }
     }
 
-    // 🔹 Dialog Pop-up
     if (showInfoDialog) {
         InfoDialog(
             peserta = pesertaTerbaru,
@@ -832,7 +802,6 @@ fun InfoDialog(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Header dengan gradient background
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -881,7 +850,6 @@ fun InfoDialog(
                         }
                     }
 
-                    // Scrollable Content
                     val scrollState = rememberScrollState()
                     Column(
                         modifier = Modifier
@@ -891,7 +859,6 @@ fun InfoDialog(
                             .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Informasi Pribadi
                         SectionCard(
                             title = "Informasi Pribadi",
                             cardColor = cardColor,
@@ -904,7 +871,6 @@ fun InfoDialog(
                             DetailRowInfo("Angkatan", peserta.angkatan ?: "-", textColor, subTitleColor)
                         }
 
-                        // Pilihan Divisi 1
                         SectionCard(
                             title = "Pilihan Divisi 1",
                             cardColor = cardColor,
@@ -920,7 +886,6 @@ fun InfoDialog(
                             )
                         }
 
-                        // Pilihan Divisi 2
                         SectionCard(
                             title = "Pilihan Divisi 2",
                             cardColor = cardColor,
@@ -936,14 +901,12 @@ fun InfoDialog(
                             )
                         }
 
-                        // Dokumen & Lampiran
                         SectionCard(
                             title = "Dokumen & Lampiran",
                             cardColor = cardColor,
                             textColor = textColor,
                             subTitleColor = subTitleColor
                         ) {
-                            // KRS Terakhir
                             if (!peserta.krsTerakhir.isNullOrBlank()) {
                                 AttachmentRow(
                                     label = "KRS Terakhir",
@@ -965,7 +928,6 @@ fun InfoDialog(
                                 DetailRowInfo("KRS Terakhir", "Tidak tersedia", textColor, subTitleColor.copy(alpha = 0.6f))
                             }
 
-                            // Formulir Pendaftaran
                             if (!peserta.formulirPendaftaran.isNullOrBlank() && peserta.formulirPendaftaran != "false" && peserta.formulirPendaftaran != "null") {
                                 if (peserta.formulirPendaftaran.startsWith("http")) {
                                     AttachmentRow(
@@ -991,7 +953,6 @@ fun InfoDialog(
                                 DetailRowInfo("Formulir Pendaftaran", "Tidak tersedia", textColor, subTitleColor.copy(alpha = 0.6f))
                             }
 
-                            // Surat Komitmen
                             if (!peserta.suratKomitmen.isNullOrBlank() && peserta.suratKomitmen != "false" && peserta.suratKomitmen != "null") {
                                 if (peserta.suratKomitmen.startsWith("http")) {
                                     AttachmentRow(
@@ -1141,13 +1102,13 @@ fun AcceptDialog(
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false // ✅ bikin background hitam full
+            usePlatformDefaultWidth = false
         )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f)) // ✅ gelap penuh seperti InfoDialog
+                .background(Color.Black.copy(alpha = 0.6f))
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1247,13 +1208,13 @@ fun RejectDialog(
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false // ✅ biar background hitam full juga
+            usePlatformDefaultWidth = false
         )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f)) // ✅ samain gelapnya
+                .background(Color.Black.copy(alpha = 0.6f))
                 .padding(20.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1364,7 +1325,6 @@ fun EditPesertaDialog(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Header dengan gradient
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1402,7 +1362,6 @@ fun EditPesertaDialog(
                     }
                 }
 
-                // Form Content
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1410,7 +1369,6 @@ fun EditPesertaDialog(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Nama Field
                     OutlinedTextField(
                         value = nama,
                         onValueChange = { nama = it },
@@ -1427,7 +1385,6 @@ fun EditPesertaDialog(
                         )
                     )
 
-                    // NIM Field
                     OutlinedTextField(
                         value = nim,
                         onValueChange = { nim = it },
@@ -1452,7 +1409,6 @@ fun EditPesertaDialog(
                         color = Color(0xFF4A3A79)
                     )
 
-                    // Divisi 1 Field
                     OutlinedTextField(
                         value = divisi1,
                         onValueChange = { divisi1 = it },
@@ -1469,7 +1425,6 @@ fun EditPesertaDialog(
                         )
                     )
 
-                    // Alasan Divisi 1
                     OutlinedTextField(
                         value = alasan1,
                         onValueChange = { alasan1 = it },
@@ -1488,7 +1443,6 @@ fun EditPesertaDialog(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Divisi 2 Field
                     OutlinedTextField(
                         value = divisi2,
                         onValueChange = { divisi2 = it },
@@ -1505,7 +1459,6 @@ fun EditPesertaDialog(
                         )
                     )
 
-                    // Alasan Divisi 2
                     OutlinedTextField(
                         value = alasan2,
                         onValueChange = { alasan2 = it },
@@ -1524,7 +1477,6 @@ fun EditPesertaDialog(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1723,7 +1675,6 @@ fun ExportResultDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
-                    // ===== CLOSE ICON =====
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -1739,7 +1690,6 @@ fun ExportResultDialog(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // ===== TITLE =====
                     Text(
                         text = if (success) "Export Berhasil" else "Export Gagal",
                         color = Color(0xFF4A3A79),
@@ -1750,7 +1700,6 @@ fun ExportResultDialog(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ===== ICON =====
                     Icon(
                         imageVector = if (success) Icons.Default.CheckCircle else Icons.Default.Error,
                         contentDescription = null,
@@ -1760,7 +1709,6 @@ fun ExportResultDialog(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ===== MESSAGE =====
                     Text(
                         text = message,
                         fontSize = 14.sp,
@@ -1770,7 +1718,6 @@ fun ExportResultDialog(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // ===== ACTION BUTTONS =====
                     if (success && onOpenFile != null) {
                         Button(
                             onClick = onOpenFile,

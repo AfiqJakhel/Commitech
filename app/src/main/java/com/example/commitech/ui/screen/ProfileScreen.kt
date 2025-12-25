@@ -31,7 +31,7 @@ fun ProfileScreen(
     val authState by authViewModel.authState.collectAsState()
     var isVisible by remember { mutableStateOf(false) }
     
-    // Trigger animation on screen load
+
     LaunchedEffect(Unit) {
         delay(100)
         isVisible = true
@@ -47,7 +47,7 @@ fun ProfileScreen(
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Header Profile Card
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -63,7 +63,7 @@ fun ProfileScreen(
                 }
             }
             
-            // Profile Stats
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -76,7 +76,7 @@ fun ProfileScreen(
                 }
             }
             
-            // Profile Info Section
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -91,7 +91,7 @@ fun ProfileScreen(
                 }
             }
             
-            // Actions Section
+
             item {
                 AnimatedVisibility(
                     visible = isVisible,
@@ -126,7 +126,7 @@ fun ProfileHeaderCard(
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Gradient Background
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,7 +149,7 @@ fun ProfileHeaderCard(
             ) {
                 Spacer(modifier = Modifier.height(40.dp))
                 
-                // Avatar with Badge
+
                 Box(
                     contentAlignment = Alignment.BottomEnd
                 ) {
@@ -171,7 +171,7 @@ fun ProfileHeaderCard(
                         )
                     }
                     
-                    // Verified Badge
+
                     Surface(
                         modifier = Modifier
                             .size(32.dp)
@@ -192,7 +192,7 @@ fun ProfileHeaderCard(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Name
+
                 Text(
                     text = userName,
                     fontSize = 24.sp,
@@ -202,7 +202,7 @@ fun ProfileHeaderCard(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                // Role Badge
+
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = colorScheme.primary.copy(alpha = 0.1f)
@@ -229,7 +229,7 @@ fun ProfileHeaderCard(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // Email
+
                 Text(
                     text = userEmail,
                     fontSize = 14.sp,
